@@ -1,0 +1,438 @@
+@import url('/tokens.css');
+
+html { font-size: 16px; }
+body {
+  margin: 0;
+  background: var(--color-bg);
+  color: var(--color-fg);
+  font-family: var(--font-ui);
+}
+
+body.home {
+  background:
+    radial-gradient(120vmax 60vmax at 70% -10%, color-mix(in oklab, var(--color-accent) 6%, transparent), transparent 60%),
+    radial-gradient(100vmax 55vmax at -10% 20%, color-mix(in oklab, var(--color-fg) 4%, transparent), transparent 55%),
+    var(--color-bg);
+  background-repeat: no-repeat, no-repeat, no-repeat;
+  background-attachment: fixed, fixed, scroll;
+  background-size: 120vmax 60vmax, 100vmax 55vmax, auto;
+}
+
+a { color: inherit; text-decoration: none; }
+/* Accessible list links: only underline the title, not the whole block */
+.a11y-link {
+  display: block;
+  text-decoration: none;
+}
+/* Add gentle spacing between title, meta, and chips inside list links */
+.a11y-link > * + * { margin-top: var(--space-2); }
+/* Underline only the heading for clarity */
+.a11y-link h3 {
+  text-decoration: none;
+  transition: color 120ms ease, text-decoration-color 120ms ease;
+}
+/* On hover/focus, underline and change color */
+.a11y-link:hover h3,
+.a11y-link:focus-visible h3 {
+  color: var(--color-accent);
+  text-decoration: underline;
+  text-underline-offset: 3px;
+}
+.a11y-link:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+/* Tighter, more intentional chip layout inside list links */
+.a11y-link .cluster { margin-top: var(--space-2); gap: var(--space-3); }
+
+/* Skip link */
+.skip-link { position: absolute; left: -9999px; top: auto; overflow: hidden; }
+.skip-link:focus { left: 16px; top: 8px; padding: 8px 12px; background: var(--color-fg); color: var(--color-bg); border-radius: var(--radius-1); z-index: 1000; text-decoration: none; }
+
+.container {
+  width: 100%;
+  max-width: var(--container-wide);
+  margin-inline: auto;
+  padding-inline: var(--space-5);
+}
+
+.stack > * + * { margin-top: var(--space-6); }
+.cluster { display: flex; gap: var(--space-4); align-items: center; flex-wrap: wrap; }
+
+/* Atelier visual voice (toggleable) */
+.theme-atelier {
+  --atelier-fg-soft: color-mix(in oklab, var(--color-fg) 92%, var(--color-bg));
+  --atelier-accent: color-mix(in oklab, var(--color-accent) 80%, var(--color-fg));
+}
+.theme-atelier main { padding-top: calc(var(--space-8) + 6px); }
+.theme-atelier .container { position: relative; z-index: 0; }
+.theme-atelier .container::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 1px;
+  background: linear-gradient(to bottom, transparent, color-mix(in oklab, var(--color-fg) 18%, transparent) 12%, color-mix(in oklab, var(--color-fg) 12%, transparent) 88%, transparent);
+  pointer-events: none;
+  transform: translateX(calc(-1 * (var(--space-5) + 8px)));
+  z-index: -1;
+}
+.theme-atelier h1, .theme-atelier h2, .theme-atelier h3 {
+  letter-spacing: -0.01em;
+}
+.theme-atelier h1 {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: clamp(46px, 6.6vw, 62px);
+}
+.theme-atelier h2 { font-family: var(--font-display); font-weight: 700; }
+.theme-atelier .chip { border-color: color-mix(in oklab, var(--color-fg) 22%, transparent); color: var(--atelier-fg-soft); }
+.theme-atelier .tech-card, .theme-atelier .comp-card { background: color-mix(in oklab, var(--color-fg) 5%, var(--color-bg)); }
+.theme-atelier nav a[aria-current="page"] { background: color-mix(in oklab, var(--color-fg) 8%, transparent); }
+.theme-atelier .divider { opacity: 0.8; }
+
+@media (max-width: 900px) {
+  .theme-atelier .container::before { display: none; }
+}
+
+header.site {
+  position: sticky;
+  top: 0;
+  background: color-mix(in oklab, var(--color-bg) 94%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-fg) 12%, transparent);
+  z-index: 10;
+}
+
+nav a { padding: var(--space-4) var(--space-3); border-radius: var(--radius-1); }
+nav a:focus-visible { outline: 2px solid var(--color-accent); outline-offset: 2px; }
+nav a[aria-current="page"] { background: color-mix(in oklab, var(--color-fg) 6%, transparent); }
+
+.prose { max-width: var(--container-narrow); line-height: 1.6; }
+
+.primary {
+  background: var(--color-fg);
+  color: var(--color-bg);
+  border: 1px solid var(--color-fg);
+  padding: 10px 14px;
+  border-radius: var(--radius-1);
+}
+.primary:hover { background: color-mix(in oklab, var(--color-fg) 92%, transparent); }
+.ghost { border: 1px solid color-mix(in oklab, var(--color-fg) 18%, transparent); padding: 10px 14px; border-radius: var(--radius-1); }
+
+footer.site { border-top: 1px solid color-mix(in oklab, var(--color-fg) 12%, transparent); padding: var(--space-8) 0; }
+
+/* Elegant dividers */
+.divider {
+  position: relative;
+  height: 1px;
+  background: linear-gradient(
+    to right,
+    transparent,
+    color-mix(in oklab, var(--color-fg) 10%, transparent) 15%,
+    color-mix(in oklab, var(--color-fg) 18%, transparent) 50%,
+    color-mix(in oklab, var(--color-fg) 10%, transparent) 85%,
+    transparent
+  );
+  mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+  -webkit-mask: linear-gradient(#000, #000) content-box, linear-gradient(#000, #000);
+}
+.divider--soft { opacity: 0.7; }
+.divider--spaced { margin: var(--space-7) 0; }
+
+/* Technologies grid */
+.tech-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  gap: var(--space-5);
+}
+.tech-card {
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  /* Layout rows so buttons stay pinned to the bottom and text can flow under the icon */
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    "icon title"
+    "icon sub"
+    "notes notes"
+    "chips chips";
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border: 1px solid color-mix(in oklab, var(--color-fg) 10%, transparent);
+  border-radius: var(--radius-1);
+  background: color-mix(in oklab, var(--color-fg) 4%, var(--color-bg));
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+  position: relative;
+  overflow: hidden;
+  /* Encourage uniform card sizing across the grid */
+  min-block-size: 190px;
+}
+.tech-card:hover { border-color: color-mix(in oklab, var(--color-fg) 18%, transparent); text-decoration: none; transform: translateY(-1px); }
+.tech-icon { grid-area: icon; width: 40px; height: 40px; display:grid; place-items:center; border-radius: 8px; background: color-mix(in oklab, var(--color-fg) 6%, transparent); overflow: hidden; }
+.tech-icon img, .tech-icon svg { display:block; width:28px; height:28px; }
+.tech-dot { width: 20px; height: 20px; border-radius: 50%; background: var(--color-accent); }
+/* combined icon variants are prebuilt as single SVGs */
+.tech-meta { display: contents; }
+.tech-title { grid-area: title; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tech-title a { text-decoration: none; }
+.tech-title a:hover { text-decoration: underline; text-underline-offset: 3px; }
+.tech-sub { grid-area: sub; color: var(--color-muted); font-size: var(--font-size-2); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.tech-notes {
+  grid-area: notes;
+  color: color-mix(in oklab, var(--color-fg) 85%, var(--color-bg));
+  font-size: var(--font-size-2);
+  margin-top: 4px;
+  /* Constrain text for consistent card heights */
+  display: -webkit-box;
+  line-clamp: 3;
+  -webkit-line-clamp: 3;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+.tech-card.is-disabled { opacity: 0.85; cursor: default; }
+.tech-card.is-disabled:hover { border-color: color-mix(in oklab, var(--color-fg) 10%, transparent); transform: none; }
+/* Keep chips pinned to the bottom across all cards */
+.tech-card .chips { grid-area: chips; margin-top: 0; align-self: end; }
+
+/* Competencies */
+.comp-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: var(--space-5); }
+.comp-card { border: 1px solid color-mix(in oklab, var(--color-fg) 10%, transparent); border-radius: var(--radius-1); padding: var(--space-5); background: color-mix(in oklab, var(--color-fg) 4%, var(--color-bg)); transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease; }
+.comp-title { font-weight: 600; margin-bottom: 4px; }
+.comp-sub { color: var(--color-muted); font-size: var(--font-size-2); margin-bottom: 8px; }
+.comp-card ul { margin: 0; padding-left: 1.1rem; }
+.comp-card li { margin: 4px 0; }
+
+/* Meta grid & chips */
+.meta-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(160px, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+.meta-item { display: grid; gap: 4px; }
+.meta-label { font-size: var(--font-size-1); color: var(--color-muted); }
+.chip { display: inline-block; padding: 3px 10px; border: 1px solid color-mix(in oklab, var(--color-fg) 18%, transparent); border-radius: 9999px; font-size: var(--font-size-1); color: var(--color-muted); line-height: 1; }
+.chips { display:flex; gap: 6px; flex-wrap: wrap; }
+
+/* Page specific: Stack */
+.page-intro { color: var(--color-muted); margin: 0 0 var(--space-5); max-width: 72ch; }
+
+/* Languages grid: subtle cards that harmonize with tech-card */
+.lang-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(240px, 1fr)); gap: var(--space-4); }
+.lang-card {
+  position: relative;
+  display: grid;
+  grid-template-columns: 40px 1fr;
+  grid-template-rows: auto auto 1fr auto;
+  grid-template-areas:
+    "icon title"
+    "icon sub"
+    "gap gap"
+    "chips chips";
+  gap: var(--space-4);
+  padding: var(--space-5);
+  border-radius: var(--radius-1);
+  border: 1px solid color-mix(in oklab, var(--color-fg) 10%, transparent);
+  background: linear-gradient(
+    180deg,
+    color-mix(in oklab, var(--color-fg) 5%, var(--color-bg)) 0%,
+    color-mix(in oklab, var(--color-fg) 3%, var(--color-bg)) 100%
+  );
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+  min-block-size: 170px;
+}
+.lang-icon { grid-area: icon; width: 40px; height: 40px; display:grid; place-items:center; border-radius: 8px; background: color-mix(in oklab, var(--color-fg) 6%, transparent); overflow: hidden; }
+.lang-icon img { width: 28px; height: 28px; display: block; }
+.lang-card::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  border-radius: inherit;
+  box-shadow: inset 0 1px 0 0 color-mix(in oklab, var(--color-fg) 8%, transparent);
+}
+.lang-card:hover { border-color: color-mix(in oklab, var(--color-fg) 18%, transparent); transform: translateY(-1px); }
+
+/* Unify hover effect across all card types */
+.comp-card:hover,
+.focus-card:hover,
+.tech-card:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--color-fg) 18%, transparent);
+}
+.lang-title { grid-area: title; font-weight: 700; letter-spacing: -0.01em; }
+.lang-sub { grid-area: sub; color: var(--color-muted); font-size: var(--font-size-2); margin-top: 6px; }
+/* Bottom-align docs chip consistently */
+.lang-card .chips { grid-area: chips; align-self: end; margin-top: 0; }
+
+/* Focus cards: compact, formal */
+.focus-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: var(--space-4); }
+.focus-card { border: 1px solid color-mix(in oklab, var(--color-fg) 10%, transparent); border-radius: var(--radius-1); padding: var(--space-5); background: color-mix(in oklab, var(--color-fg) 4%, var(--color-bg)); transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease; }
+.focus-title { font-weight: 600; }
+.focus-sub { color: var(--color-muted); font-size: var(--font-size-2); margin-top: 4px; }
+
+/* Generic listing grid + cards (used for Work and Writing) */
+.list-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
+  gap: var(--space-4);
+  margin-top: var(--space-4);
+}
+@media (max-width: 720px) {
+  .list-grid { grid-template-columns: 1fr; }
+}
+
+/* Minimal brutalist LIST view */
+.view-list .list-grid { display: block; margin-top: var(--space-3); }
+.view-list .list-grid > article.list-card {
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid color-mix(in oklab, var(--color-fg) 14%, transparent);
+  border-radius: 0;
+  padding: var(--space-5) 0;
+  margin: 0;
+  display: block;
+  gap: 0;
+  transition: background-color 120ms ease;
+}
+.view-list .list-grid > article.list-card:first-child { border-top: 1px solid color-mix(in oklab, var(--color-fg) 14%, transparent); }
+.view-list .list-card.has-thumb { padding: var(--space-5) 0; }
+.view-list .list-card .list-thumb { display: none; }
+.view-list .list-card h3 { font-size: clamp(1.05rem, 0.9rem + 0.6vw, 1.4rem); font-weight: 600; margin: 0 0 6px; letter-spacing: -0.01em; }
+.view-list .list-card .meta { font-size: var(--font-size-1); gap: 6px; color: var(--color-muted); margin: 0 0 2px; }
+.view-list .list-card p, .view-list .list-card .chips, .view-list .list-card .peek { display: none !important; }
+/* Remove client portion in Work list view, keep year only */
+.view-list #work-grid .list-card .meta span:first-child { display: none; }
+.view-list #work-grid .list-card .meta span + span { position: relative; }
+.view-list #work-grid .list-card .meta span + span::before { content: ""; }
+.view-list .list-card:hover h3, .view-list .list-card:focus-within h3 { text-decoration: underline; text-underline-offset: 3px; }
+.view-list .list-card:hover, .view-list .list-card:focus-within { background: color-mix(in oklab, var(--color-fg) 4%, transparent); transform: none; }
+@media (max-width: 640px) { .view-list .list-card h3 { font-size: 1.05rem; } }
+
+.list-card {
+  display: grid;
+  gap: 8px;
+  height: 100%;
+  padding: var(--space-5);
+  border-radius: var(--radius-1);
+  border: 1px solid color-mix(in oklab, var(--color-fg) 10%, transparent);
+  background: color-mix(in oklab, var(--color-fg) 4%, var(--color-bg));
+  transition: border-color 140ms ease, background-color 140ms ease, transform 140ms ease;
+  position: relative;
+}
+.list-card.has-thumb { padding: var(--space-4); }
+.list-card:hover,
+.list-card:focus-within {
+  transform: translateY(-1px);
+  border-color: color-mix(in oklab, var(--color-fg) 18%, transparent);
+}
+.list-thumb {
+  width: 100%;
+  aspect-ratio: 16 / 9;
+  border-radius: calc(var(--radius-1) - 2px);
+  overflow: hidden;
+  /* Gradient matte that subtly contrasts and repeats across cards */
+  --gx: 24%;
+  --gy: 28%;
+  --g1: color-mix(in oklab, var(--color-accent) 16%, transparent);
+  --g2: color-mix(in oklab, var(--color-fg) 6%, transparent);
+  position: relative;
+  isolation: isolate;
+  background:
+    radial-gradient(120% 100% at var(--gx) var(--gy), var(--g1), transparent 60%),
+    linear-gradient(180deg, var(--g2), transparent 60%);
+}
+.list-thumb img { width: 100%; height: 100%; object-fit: cover; display: block; background: transparent; position: relative; z-index: 0; }
+/* Overlay the gradient on top too, to tint hard-white OG images */
+.list-thumb::after {
+  content: "";
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background:
+    radial-gradient(120% 100% at var(--gx) var(--gy), var(--g1), transparent 60%),
+    linear-gradient(180deg, var(--g2), transparent 60%);
+  mix-blend-mode: multiply;
+  opacity: 0.5;
+  pointer-events: none;
+  z-index: 1;
+}
+/* Subtle, repeating variations based on card index for an elegant tiled pattern */
+.list-card:nth-child(6n+1) .list-thumb { --gx: 22%; --gy: 26%; --g1: color-mix(in oklab, var(--color-accent) 14%, transparent); }
+.list-card:nth-child(6n+2) .list-thumb { --gx: 78%; --gy: 24%; --g1: color-mix(in oklab, var(--color-fg) 10%, transparent); }
+.list-card:nth-child(6n+3) .list-thumb { --gx: 28%; --gy: 74%; --g1: color-mix(in oklab, var(--color-accent) 12%, transparent); }
+.list-card:nth-child(6n+4) .list-thumb { --gx: 68%; --gy: 70%; --g1: color-mix(in oklab, var(--color-fg) 8%, transparent); }
+.list-card:nth-child(6n+5) .list-thumb { --gx: 46%; --gy: 20%; --g1: color-mix(in oklab, var(--color-accent) 18%, transparent); }
+.list-card:nth-child(6n+6) .list-thumb { --gx: 16%; --gy: 60%; --g1: color-mix(in oklab, var(--color-fg) 9%, transparent); }
+.list-card h3 { margin: 0; letter-spacing: -0.01em; }
+.list-card .meta {
+  display: flex;
+  gap: 10px;
+  color: var(--color-muted);
+  font-size: var(--font-size-2);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.list-card p { margin: 0; color: color-mix(in oklab, var(--color-fg) 85%, var(--color-bg)); }
+.list-card .chips { margin-top: 2px; gap: var(--space-3); }
+
+/* Sticky subnav with filters / jump links */
+.subnav {
+  position: sticky;
+  top: 0;
+  z-index: 5;
+  padding: var(--space-3) 0;
+  background: color-mix(in oklab, var(--color-bg) 94%, transparent);
+  backdrop-filter: blur(6px);
+  border-bottom: 1px solid color-mix(in oklab, var(--color-fg) 10%, transparent);
+}
+.chip--selectable { cursor: pointer; user-select: none; }
+.chip--active {
+  color: var(--color-fg);
+  border-color: color-mix(in oklab, var(--color-fg) 28%, transparent);
+  background: color-mix(in oklab, var(--color-fg) 6%, transparent);
+}
+
+/* Load more */
+.more { display: grid; place-items: center; }
+.more button { 
+  padding: 10px 14px; 
+  border-radius: var(--radius-1); 
+  border: 1px solid color-mix(in oklab, var(--color-fg) 18%, transparent);
+  background: color-mix(in oklab, var(--color-fg) 4%, var(--color-bg));
+  cursor: pointer;
+}
+.is-hidden { display: none !important; }
+
+/* Screen reader only utility */
+.sr-only {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  padding: 0;
+  margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* Entry animation for revealed cards */
+@keyframes slideFadeIn {
+  from { opacity: 0; transform: translateY(4px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+.anim-in { animation: slideFadeIn 220ms ease-out; }
+
+/* Hover peek tooltip */
+.peek {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 12px;
+  padding: 8px 10px;
+  border-radius: 8px;
+  background: color-mix(in oklab, var(--color-bg) 90%, var(--color-fg));
+  color: var(--color-fg);
+  border: 1px solid color-mix(in oklab, var(--color-fg) 14%, transparent);
+  font-size: var(--font-size-1);
+  opacity: 0;
+  transform: translateY(4px);
+  transition: opacity 120ms ease, transform 120ms ease;
+  pointer-events: none;
+}
+.list-card:hover .peek, .list-card:focus-within .peek { opacity: 1; transform: translateY(0); }

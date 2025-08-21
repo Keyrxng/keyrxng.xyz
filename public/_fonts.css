@@ -1,0 +1,57 @@
+/* Local self-hosted fonts. Prefer woff2 in production; using variable TTFs for quick evaluation. */
+/* Existing Google Fonts (if still desired) can be re-added via import; removed for local testing speed. */
+
+/* Variable font: Noto Sans (Roman) */
+@font-face {
+	font-family: "Noto Sans";
+	src: url('/fonts/NotoSans-VariableFont_wdth,wght.ttf') format('truetype');
+	font-weight: 100 900;
+	font-stretch: 75% 125%;
+	font-style: normal;
+	font-display: swap;
+}
+/* Variable font: Noto Sans (Italic) */
+@font-face {
+	font-family: "Noto Sans";
+	src: url('/fonts/NotoSans-Italic-VariableFont_wdth,wght.ttf') format('truetype');
+	font-weight: 100 900;
+	font-stretch: 75% 125%;
+	font-style: italic;
+	font-display: swap;
+}
+
+/* Variable font: Roboto (Roman) */
+@font-face {
+	font-family: "Roboto";
+	src: url('/fonts/Roboto-VariableFont_wdth,wght.ttf') format('truetype');
+	font-weight: 100 900;
+	font-stretch: 75% 125%;
+	font-style: normal;
+	font-display: swap;
+}
+/* Variable font: Roboto (Italic) */
+@font-face {
+	font-family: "Roboto";
+	src: url('/fonts/Roboto-Italic-VariableFont_wdth,wght.ttf') format('truetype');
+	font-weight: 100 900;
+	font-stretch: 75% 125%;
+	font-style: italic;
+	font-display: swap;
+}
+
+/* Optional: UI/display serif & UI sans if you still need them via system / fallback */
+/* Provide convenient toggles for trying each font stack */
+:root {
+	/* Toggle these to test; primary UI font var(--font-ui) is defined in tokens.css */
+	--font-try-noto: "Noto Sans", system-ui, sans-serif;
+	--font-try-roboto: "Roboto", system-ui, sans-serif;
+}
+
+/* Utility classes for quick experimentation in markup */
+.font-noto { font-family: var(--font-try-noto); }
+.font-roboto { font-family: var(--font-try-roboto); }
+
+/* If you decide to adopt one globally, edit --font-sans or --font-ui in tokens.css */
+/* Body toggle classes (preferred for experimentation without touching tokens) */
+body.font-roboto { --font-ui: var(--font-try-roboto); --font-sans: var(--font-try-roboto); }
+body.font-noto { --font-ui: var(--font-try-noto); --font-sans: var(--font-try-noto); }

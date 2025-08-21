@@ -1,0 +1,12 @@
+@import url('/tokens.css');
+
+.prose h1 { font-size: clamp(36px, 6vw, 48px); line-height: 1.15; margin: var(--space-8) 0 var(--space-6); }
+.prose h2 { font-size: clamp(28px, 4.2vw, 36px); line-height: 1.22; margin: var(--space-7) 0 var(--space-5); }
+.prose h3 { font-size: clamp(22px, 3.2vw, 28px); line-height: 1.28; margin: var(--space-6) 0 var(--space-4); }
+.prose p { font-size: var(--font-size-3); margin: var(--space-4) 0; color: color-mix(in oklab, var(--color-fg) 92%, var(--color-bg)); }
+.prose a { color: var(--color-accent); text-decoration: underline; text-underline-offset: 2px; }
+.prose ul, .prose ol { padding-left: 1.25rem; }
+.prose li { margin: 6px 0; }
+.prose code { font-family: var(--font-mono); font-size: 0.95em; }
+.prose pre { background: color-mix(in oklab, var(--color-fg) 6%, var(--color-bg)); padding: var(--space-5); border-radius: var(--radius-1); overflow: auto; }
+.prose blockquote { margin: var(--space-6) 0; padding-left: var(--space-5); border-left: 3px solid color-mix(in oklab, var(--color-fg) 18%, transparent); color: var(--color-muted); }

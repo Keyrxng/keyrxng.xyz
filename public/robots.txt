@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://keyrxng.xyz/sitemap-index.xml

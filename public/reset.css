@@ -1,0 +1,9 @@
+/* Minimal modern reset */
+* { box-sizing: border-box; }
+* { margin: 0; }
+html:focus-within { scroll-behavior: smooth; }
+html, body { height: 100%; }
+body { text-rendering: optimizeLegibility; -webkit-font-smoothing: antialiased; -moz-osx-font-smoothing: grayscale; }
+img, picture, video, canvas, svg { display: block; max-width: 100%; }
+input, button, textarea, select { font: inherit; }
+:focus-visible { outline: 2px solid Highlight; outline-offset: 2px; }
