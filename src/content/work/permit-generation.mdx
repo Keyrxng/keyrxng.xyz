@@ -1,0 +1,135 @@
+---
+title: "Automated Payment Permit Generation"
+clientOrProject: "Ubiquity OS"
+role: "Product Engineer (Cryptography & Infrastructure)"
+year: "2024"
+summary: "Standalone module for secure ERC20/ERC721 permit generation. Involved deep cryptography work (X25519/TweetNaCl), three different implementations due to changing requirements, and eventual management dysfunction leading to project abandonment."
+constraints: [
+  "GitHub App secret scope is all-or-nothing → encrypt private key with X25519",
+  "libsodium incompatible with Cloudflare Workers runtime",
+  "Support both ERC20 (Permit2) + ERC721 with distinct signature paths",
+  "Three different implementation formats due to changing direction",
+  "Management uncertainty leading to repeated rewrites and scope changes"
+]
+approach: "Deep dive into cryptography: reverse-engineered libsodium box seal implementation; ported to TweetNaCl for Workers compatibility; implemented Permit2 for ERC20 and custom ERC721 signatures; built comprehensive test suite."
+tech: ["TypeScript", "X25519 Cryptography", "libsodium", "TweetNaCl", "blake2b", "@uniswap/permit2-sdk", "ethers.js", "Supabase", "Jest", "Cloudflare Workers"]
+wins: [
+  "Solved complex cryptography challenge (libsodium → TweetNaCl port)",
+  "Mastered keypair cryptography beyond ECDSA blockchain experience",
+  "Delivered secure permit generation across three different formats",
+  "Established critical payment infrastructure for ecosystem"
+]
+outcomes:
+  - metric: "cryptography libraries mastered"
+    value: "2"
+    unit: "libsodium + TweetNaCl"
+  - metric: "project status"
+    value: "abandoned"
+    unit: "due to management dysfunction"
+---
+
+### Problem
+The Ubiquity ecosystem required secure permit generation for ERC20 and ERC721 token payments while isolating cryptographic operations from plugin logic. The challenge: GitHub App permissions are all-or-nothing, requiring X25519 encryption for private keys. Additional complexity emerged when libsodium proved incompatible with Cloudflare Workers, necessitating deep cryptographic research and implementation of alternative solutions.
+
+### Approach
+- **Cryptographic deep dive**: Reverse-engineered libsodium's box seal implementation to understand nonce derivation and encryption flow
+- **Runtime compatibility solution**: Ported encryption logic from libsodium to TweetNaCl for Cloudflare Workers compatibility
+- **Dual permit systems**: Implemented Permit2 standard for ERC20 tokens and custom signature scheme for ERC721 with metadata
+- **Security-first architecture**: X25519 encrypted private keys with blake2b nonce derivation matching libsodium behavior
+- **Multiple deployment targets**: Delivered as GitHub Action and Cloudflare Worker due to changing management requirements
+- **Comprehensive testing**: Jest test suite with mocked blockchain interactions and encrypted key handling
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Req[Plugin Request] --> Validate[Input Validation]
+    Validate --> Lookup[User Lookup GitHub API]
+    Lookup --> Wallet[Wallet Resolution Supabase]
+    Wallet --> Decrypt[Private Key Decryption X25519]
+    Decrypt --> Token[Token Contract Interaction]
+    Token --> Permit[Permit2 Signature Generation]
+    Permit --> DB[Database Record]
+    DB --> Resp[Permit Response]
+  `}
+/>
+
+### Outcome
+- **Technical mastery**: Successfully solved complex cryptographic compatibility challenge between libsodium and Cloudflare Workers
+- **Infrastructure delivered**: Secure permit generation for both ERC20 (Permit2) and ERC721 tokens with comprehensive test coverage
+- **Multiple implementations**: Delivered same functionality as GitHub Action and Cloudflare Worker
+- **Management dysfunction**: Final Worker conversion PR abandoned due to repeated scope changes and uncertain direction
+- **16 releases shipped**: Automated CI/CD pipeline with comprehensive testing and package distribution
+
+### Management challenges
+- **March 2024**: Initial Worker implementation converted to GitHub Action after review feedback
+- **April 2024**: Converted from GitHub Action to NPM Package (not my work)
+- **September 2024**: Converted back to GitHub Action (not my work)
+- **October 2024**: Asked to convert back to Worker after 7 months and two rewrites, despite original Worker code being presented initially.
+- **November 2024-April 2025**: Extended delays due to management uncertainty about deployment targets (Azure vs Cloudflare, Bun vs Node) and core REST features
+- **Final abandonment**: Worker conversion PR cancelled amid broader organizational dysfunction and during contributor silent firing process
+
+### Proof
+Code excerpt — ERC20 permit (Permit2)
+
+```ts
+const permitTransferFromData: PermitTransferFrom = {
+  permitted: { token: tokenAddress, amount: utils.parseUnits(amount.toString(), tokenDecimals) },
+  spender: walletAddress,
+  nonce: BigInt(utils.keccak256(utils.toUtf8Bytes(`${userId}-${issueNodeId}`))),
+  deadline: MaxUint256,
+};
+const { domain, types, values } = SignatureTransfer.getPermitData(permitTransferFromData, PERMIT2_ADDRESS, evmNetworkId);
+const signature = await adminWallet._signTypedData(domain, types, values);
+```
+
+Code excerpt — ERC721 permit with metadata
+
+```ts
+const erc721SignatureData: Erc721PermitSignatureData = {
+  beneficiary: _walletAddress,
+  deadline: MaxUint256.toBigInt(),
+  keys: metadata.map(([key]) => utils.keccak256(utils.toUtf8Bytes(key))),
+  nonce: BigInt(utils.keccak256(utils.toUtf8Bytes(`${_userId}-${_issueNodeId}`))),
+  values: metadata.map(([, value]) => value),
+};
+```
+
+Code excerpt — libsodium to TweetNaCl cryptographic port
+
+```ts
+import { scalarMult, box } from "tweetnacl";
+import blake2b from "blake2b";
+
+// libsodium hashes the epk with the rpk to create a nonce
+// tweetnacl enforces manual nonce handling
+function deriveNonce(epk: Uint8Array, recipientPubKey: Uint8Array) {
+  return blake2b(24).update(epk).update(recipientPubKey).digest();
+}
+
+export async function decryptKeys(cipherText: string) {
+  const binaryCipher = SODIUM.from_base64(cipherText, SODIUM.base64_variants.URLSAFE_NO_PADDING);
+  const epk = binaryCipher.slice(0, 32);
+  const nonce = deriveNonce(epk, binaryPublic);
+  const actualEncryptedMessage = binaryCipher.slice(32);
+  const decryptedMessage = box.open(actualEncryptedMessage, nonce, epk, binaryPrivate);
+  // ...
+}
+```
+
+Test evidence — comprehensive ERC20 permit validation
+
+```ts
+expect(result).toEqual({
+  tokenType: "ERC20", tokenAddress: "0xe91D...a97d", beneficiary: "0xefC0...b7dd", 
+  nonce: "28290...862062", deadline: "11579...9639935", amount: "100000000000000000000", 
+  owner: "0xf39F...2266", signature: "0xf528...89ea1c", networkId: 100
+});
+```
+
+### References
+- Repo/package — @ubiquity-os/permit-generation (handlers, tests, workflows)
+- PR — [#96 - feat: workerize](https://github.com/ubiquity-os/permit-generation/pull/96 "workerize + improvements")
+- PR - [#1 - feat: permit module](https://github.com/ubiquity-os/permit-generation/pull/1)

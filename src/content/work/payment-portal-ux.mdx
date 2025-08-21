@@ -1,0 +1,175 @@
+---
+title: "Payment Portal UX: clearer states, mobile-aware flows"
+clientOrProject: "Ubiquity"
+role: "Product Engineer"
+year: "2024"
+summary: "Fixed confusing status states, added mobile-aware guidance, and modernized RPC plumbing without breaking existing flows."
+constraints: [
+  "Mobile browsers lack window.ethereum",
+  "Urgent hot-fix to production",
+  "Minimize unrelated changes for faster review",
+  "Maintain functional parity",
+  "CI race conditions around Anvil funding"
+]
+approach: "Persistent, non-expiring toasts for missing provider; mobile-specific guidance; safer button visibility; pagination visibility based on data; RPC handler integration; CI waits/funding sequencing."
+tech: ["TypeScript", "ethers.js", "@ubiquity-dao/rpc-handler", "Cypress", "GitHub Actions"]
+wins: [
+  "Mobile users get actionable guidance instead of dead UI",
+  "Clear success and error states (no more ‘pending' in success colors)",
+  "Fewer flickers with fastest-RPC selection"
+]
+outcomes:
+  - metric: "mobile access"
+    value: "enabled"
+    unit: "UX"
+---
+
+### Context
+The payment portal (pay.ubq.fi) was the public-facing surface shown to investors during demos and the operational path the core team used to actually collect salaries and bounty rewards. Any regression meant blocked compensation and a poor first impression for external stakeholders. I inherited a vanilla TypeScript codebase (no React) after primarily React experience, and adopted a philosophy of minimal, surgical diffs: improve what was broken or confusing without broad rewrites that slow review.
+
+### Problem
+1. Mobile users on non-Web3 browsers hit an infinite loading state because prior logic assumed a globally injected `ethereum` provider. Nothing rendered; no guidance appeared.
+2. Status feedback was semantically wrong: completed claims still displayed a green “pending” style; errors sometimes appeared transiently then vanished, eroding trust.
+3. Reward claim affordances (buttons, pagination) rendered prematurely then disappeared, creating flicker and encouraging premature clicks.
+4. RPC selection logic caused UI stalls and flickers due to slow or unhealthy endpoints; legacy chainlist code was brittle.
+5. CI pipeline (Cypress + Anvil) suffered race conditions (provider not yet ready, accounts unfunded) leading to intermittent “nonce too low” failures.
+
+### Goals
+- Unblock mobile access with explicit, persistent, device-aware guidance.
+- Align visual states with real transaction lifecycle (idle → signing → mining → complete / error) and remove ambiguous “pending success” hybrid.
+- Remove early UI flashes by gating visibility until required data or conditions are satisfied.
+- Introduce fastest healthy RPC selection without breaking existing flows; avoid broad refactors.
+- Stabilize CI to make performance/UX work reliably testable.
+
+### Non-Goals
+- Large design overhaul or component framework migration.
+- Re-architecting claim flow logic beyond clarity, safety, and state correctness.
+- Introducing intrusive wallet mutation patterns (except one experimental latency optimization later reverted by management for cultural reasons).
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Request[User Request] --> Mobile[Mobile Detection]
+    Mobile --> Web3[Web3 Availability Check]
+    Web3 --> RPC[RPC Endpoint Selection]
+    RPC --> Errors[Error Handling]
+    Errors --> UI[UI State Management]
+    UI --> Tx[Transaction Processing]
+    Tx --> Status[Status Feedback]
+  `}
+/>
+
+### Outcome
+- Mobile users now receive actionable, persistent toasts explaining how to proceed (use a Web3-capable mobile browser / MetaMask) instead of a blank, spinning interface.
+- Status labels map 1:1 with underlying state; “Claim Complete” replaces lingering “pending”. Errors surface with correct severity and remain visible long enough to act.
+- Reward UI elements only render when meaningful (e.g., pagination only when >1 reward) eliminating flicker and misclicks.
+- Fastest healthy RPC selection reduces visible loading flickers and lowers perceived latency without sacrificing reliability.
+- CI flake rate decreased due to deterministic waits and funding sequencing (empirical improvement: intermittent “nonce too low” errors ceased after change set).
+
+### Metrics / Signals (qualitative + relative)
+- Mobile load failures: "frequent" → "guided fallback" (support & issue chatter ceased).
+- Status confusion reports: reduced (no further feedback requesting clarification on claim completion coloring).
+- RPC flicker: reduced (lower spinner dwell time during internal manual timings; quantitative logging deferred to later performance initiative).
+- CI reruns for payment portal suite: reduced (manual observation pre/post patch — zero reruns needed across subsequent green runs).
+
+### Constraints
+- Ship quickly without broad refactors; keep diffs focused
+- Maintain existing functionality during hot-fix
+
+Additional tacit constraints:
+- Investor demo reliability (no risky rewrites before demo windows)
+- Avoid introducing opinionated frameworks (stay within existing vanilla TS architecture for velocity)
+
+### Design choices
+- Media-query check for mobile; targeted toasts and UI hiding
+- RPC handler returns fastest healthy provider with retry
+- Minimal, scoped CI changes to stabilize runs
+
+### Implementation Details
+1. **Device-aware provider handling**: Wrapped connection logic in a guard that first checks `window.matchMedia('(max-width: 768px)')`. For mobile contexts lacking `window.ethereum`, a persistent (non-expiring) toast delivers concrete guidance (“Use a mobile-friendly Web3 browser (MetaMask) to claim this reward”). Desktop fallback likewise communicates absence and hides interactive claim buttons to prevent dead clicks.
+2. **State-accurate messaging**: Introduced explicit internal status enums and mapped each to a deterministic label & style. Removed ambiguous green “pending” success hybrid by only transitioning to success styling after confirmation.
+3. **Safer button & pagination visibility**: Centralized button controller logic to hide claim actions until prerequisites (permit data + provider + allowance fetch) resolve. Pagination appears only if rewards length > 1, eliminating layout shifts.
+4. **Fastest RPC provider**: Integrated `@ubiquity-dao/rpc-handler` to parallel probe candidate endpoints and choose the lowest latency healthy URL, instantiating a single JsonRpcProvider reused downstream (synergy with later performance work). Defensive checks ensure a URL exists; otherwise surface a structured error.
+5. **CI hardening**: Added bounded wait loop (30s max) for Anvil availability and serialized funding step before Cypress execution to avoid nonce contention. Eliminated intermittent early test failures tied to provider readiness.
+6. **Minimal diff discipline**: Isolated unrelated stylistic or cosmetic changes into separate PRs to accelerate review and reduce regression risk during urgent mobile hot-fix.
+
+### Edge Cases & Handling
+- **Non-Web3 desktop**: Shows guidance toast and hides claim buttons (prevents false affordances).
+- **Injected provider late injection** (some extensions inject after DOM ready): Introduced retry window before declaring “missing provider”.
+- **Network ID unset**: Hard error thrown early in `useRpcHandler` rather than cascading undefined behavior.
+- **Provider URL absent**: Defensive guard prevents constructing a provider with invalid connection data.
+- **CI startup race**: Loop exit with explicit failure after max attempts to surface infrastructure issues early.
+
+### Trade-offs
+- Opted for a CSS media query heuristic over full user-agent parsing (lower complexity, adequate for gating guidance copy).
+- Deferred full logging/instrumentation for latency metrics to keep hot-fix surface small; later addressed in performance initiative.
+- Accepted introduction of a new dependency (`@ubiquity-dao/rpc-handler`) with minimal abstraction layer to avoid over-engineering.
+
+### Risks & Mitigations
+- **Risk**: Persistent toast fatigue. *Mitigation*: Only rendered in absence of provider; not re-queued once acknowledged.
+- **Risk**: Fastest RPC selection flakiness. *Mitigation*: Underlying handler performs health checks; fallback will throw early for clarity.
+- **Risk**: Hot-fix regression due to untyped globals. *Mitigation*: Added explicit guards + error branching; limited scope of touched code.
+
+### Lessons
+- Mobile Web3 UX requires explicit guidance; absence of capability must become a user education moment, not a silent failure.
+- Precise state naming internally prevents UI ambiguity externally; enums > ad-hoc string checks.
+- Small, surgical PRs accelerate emergency response while laying groundwork for deeper performance refactors.
+- CI stability investments (even tiny ones) unlock faster iteration cycles for UX improvements.
+
+### Proof
+Code excerpt — mobile-aware connect error handler
+
+```ts
+function connectErrorHandler(error: unknown) {
+  if (error instanceof Error) {
+    if (error?.message?.includes("missing provider")) {
+      const mediaQuery = window.matchMedia("(max-width: 768px)");
+      if (mediaQuery.matches) {
+        toaster.create("warning", "Please use a mobile-friendly Web3 browser such as MetaMask to collect this reward", Infinity);
+      } else if (!window.ethereum) {
+        toaster.create("warning", "Please use a web3 enabled browser to collect this reward.", Infinity);
+        buttonController.hideAll();
+      }
+    } else {
+      toaster.create("error", error.message);
+    }
+  }
+  return null;
+}
+```
+
+Code excerpt — fastest RPC provider integration
+
+```ts
+export async function useRpcHandler(app: AppState) {
+  const networkId = app.networkId;
+  if (!networkId) throw new Error("Network ID not set");
+  const handler = await useHandler(networkId);
+  const provider = await handler.getFastestRpcProvider();
+  if (!provider.connection.url) throw new Error("Provider URL not set");
+  return new ethers.providers.JsonRpcProvider(provider.connection.url);
+}
+```
+
+CI excerpt — waits + funding sequence (trimmed)
+
+```yaml
+- name: Wait for Anvil
+  run: |
+    for i in {1..30}; do curl -s http://localhost:8545 && break; sleep 1; done || exit 1
+- name: Fund test accounts
+  run: yarn test:fund
+```
+
+### References
+ - PRs — hot-fix window.ethereum ([#213](https://github.com/ubiquity/pay.ubq.fi/pull/213)), RPC upgrade ([#204](https://github.com/ubiquity/pay.ubq.fi/pull/204)), cosmetic/claim UX ([#156](https://github.com/ubiquity/pay.ubq.fi/pull/156)/[#143](https://github.com/ubiquity/pay.ubq.fi/pull/143)), mobile load fix ([#221](https://github.com/ubiquity/pay.ubq.fi/pull/221))
+- Files — connect-wallet.ts, use-rpc-handler.ts, cypress-testing workflow
+
+### See also
+- Performance counterpart — [/work/payment-portal-performance](/work/payment-portal-performance)
+- RPC infrastructure — [/work/rpc-handler](/work/rpc-handler)
+
+

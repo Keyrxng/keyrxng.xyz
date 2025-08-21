@@ -1,0 +1,137 @@
+---
+title: "Eliminating the “Union too complex to represent” Failure in the Kernel"
+clientOrProject: "Ubiquity OS Kernel"
+role: "TypeScript Engineer (Type System Refactor)"
+year: "2024"
+summary: "Re-architected webhook event typing after months of failed attempts by core devs, replacing an inference-heavy mega union with a mapped indirection that restored compiler stability and preserved payload safety + autocomplete." 
+constraints: [
+  "TypeScript compiler limit: Expression produces a union type that is too complex to represent.",
+  "Retain granular payload typing for dozens of GitHub webhook events",
+  "Avoid per-event type guards explosion (50+ functions)",
+  "Zero runtime overhead; types-only change",
+  "Minimal churn to existing kernel + plugin code"
+]
+approach: "Replace direct use of deep conditional Octokit webhook unions with a two-layer mapped type: (1) curated union for plugin DX, (2) internal mapped record resolving event name → payload; remove recursive conditional inference hotspots to bypass TS union expansion limits." 
+tech: ["TypeScript advanced mapped + conditional types", "Octokit webhook types"]
+wins: [
+  "Build unblocked — compiler error removed",
+  "Autocomplete preserved for plugin authors while keeping kernel strict",
+  "Purely type-level optimization (no runtime changes)",
+  "Simpler mental model: key → payload lookup instead of nested inference"
+]
+outcomes:
+  - metric: "compiler stability"
+    value: "restored"
+    unit: "tsc"
+  - metric: "manual guards avoided"
+    value: ">50"
+    unit: "functions not added"
+---
+
+### Problem
+The kernel's webhook context types hit a hard TypeScript ceiling: `Expression produces a union type that is too complex to represent.` (Issue opened Mar 10, 2024). Repeated attempts (narrowing generics, specific event parameterization, casting, proposed per-event type guards) either failed locally, broke in CI, or threatened a maintenance burden. The failure blocked clean builds and risked a fall-back to inelegant mass type guards while degrading contributor DX.
+
+### Context & Stakes
+- Core maintainers attempted multiple strategies (narrow generic signatures, event-specific context, casts) without a stable resolution.
+- Proposed fallback of generating 200+ type guard functions would introduce noise and maintenance drag.
+- IDE still “saw” types, but CI/compiler failures meant the status quo was unsustainable.
+- Prior success (dynamic webhook enum generation) established a precedent for type-level restructuring rather than brute-force guards.
+
+### Constraints
+- Preserve precise payload typing for each event name.
+- No runtime cost or behavioral change—types only.
+- Avoid code churn across existing handlers.
+- Maintain ergonomic autocomplete for plugin authors (not just internal kernel code).
+- Solution must scale with additional webhook events.
+
+### Approach (High-Level)
+1. Introduce an indirection layer: build a mapped type that indexes every event key to its resolved `WebhookEvent<K>` object, eliminating repeated conditional evaluation.
+2. Provide a curated “looser” union surface for plugins to keep autocomplete responsive while kernel internals retain the full strict set.
+3. Remove reliance on `WebhookEvent<T>["payload"]` where `T` was an expansive generic forcing TS to expand the entire union.
+4. Collapse inference hotspots by turning conditional chains into a record-like lookup keyed by the event string literal.
+5. (Refinement) Simplify generics per review to a single `<TSupportedEvents extends WebhookEventName>` generic—dropping the extra inferred intermediate while keeping specificity.
+
+### Implementation Highlights
+- Mapped record pattern: `SupportedEvents` acts like a `Record<EventName, WebhookEvent<EventName>>`, letting the compiler index directly instead of recomputing conditional branches.
+- Dual surface design: `SupportedEventsU` (plugin-facing curated union + `(string & {})` escape hatch) vs kernel internal full event mapping.
+- Generic context/ref classes narrowed to an indexed access of the mapped type instead of nested conditional resolution.
+- Removal of speculative “every event gets a guard” path reduced future maintenance load.
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Webhook[Webhook event received by kernel] --> TypeSystem[Kernel type system receives event]
+    TypeSystem --> Indirection[Simplified mapped/conditional indirection]
+    Indirection --> Resolved[Resolved underlying event payload]
+  `}
+/>
+
+### Design Choices (Why They Worked)
+- Lookup over inference: Direct index (`Mapped[K]`) is cheaper for TS than expanding `WebhookEvent<T>` across a mega union.
+- Curated plugin union: Keeps completion useful without forcing the compiler to realize the full space on every consumer site.
+- `(string & {})` tail in union: Allows forward compatibility for new events without immediately editing the union list.
+- Single generic parameter (post-review): Reduces surface area while keeping event-specific narrowing.
+- No runtime object needed: Entire change lives at type-level, so zero performance impact.
+
+### Proof
+Code excerpt — mapped indirection (trimmed)
+
+```ts
+export type SupportedEvents<T extends EmitterWebhookEventName = EmitterWebhookEventName> = {
+  [K in EmitterWebhookEventName]: T extends K ? EmitterWebhookEvent<T> : never;
+};
+
+export class DelegatedComputeInputs<
+  T extends keyof SupportedEvents = keyof SupportedEvents,
+  TU extends SupportedEvents[T] = SupportedEvents[T]
+> {
+  public eventName: T;
+  public eventPayload: TU["payload"];
+}
+```
+
+Code excerpt — plugin-side curated union + mapping (trimmed)
+
+```ts
+export type SupportedEventsU =
+  | "issues.labeled" | "issues.unlabeled" | "label.edited"
+  | "issues.reopened" | "push" | "issue_comment.created"
+  | (string & {});
+
+export type SupportedEvents = {
+  [K in SupportedEventsU]: K extends WebhookEventName ? WebhookEvent<K> : never;
+};
+```
+
+Conversation evidence (excerpts)
+
+```text
+"Expression produces a union type that is too complex to represent." (Issue #31)
+"Both whilefoo and I gave it our attempts but no luck." (Issue discussion)
+"Even typeguards don't work." (Issue #31)
+"I am skeptical here because the whole team tried and nobody could figure it out." (PR #52 review)
+"This looks promising, I tried it and it works." (PR #52 review)
+"fix: union too complex solve" merged (PR #52)
+```
+
+### Outcomes
+- Compiler stability restored; CI no longer blocked.
+- Strong payload typing retained across kernel code.
+- Plugin author DX preserved (autocomplete + safety) without per-event boilerplate.
+- Future events addable with minimal/no refactor (extend curated union list if needed).
+- Avoided proliferation of >50 bespoke type guard functions.
+
+### Lessons / Takeaways
+- When TS hits structural complexity limits, a shape change (record mapping) often beats incremental patching.
+- Separating DX surfaces (internal strict vs external curated) can balance performance and ergonomics.
+- Treat deep conditional generic expansions as candidates for memoization via mapped types.
+
+### References
+- Issue — [#31 - complex union error](https://github.com/ubiquity-os/ubiquity-os-kernel/issues/31 "complex union error")
+- PR — [#52 - fix union complexity](https://github.com/ubiquity-os/ubiquity-os-kernel/pull/52 "fix union complexity")
+
+
+

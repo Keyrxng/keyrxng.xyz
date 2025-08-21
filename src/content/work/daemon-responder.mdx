@@ -1,0 +1,109 @@
+---
+title: "Daemon Responder: guide contributors in no-reply repos"
+clientOrProject: "Ubiquity OS"
+role: "Engineer"
+year: "2024"
+summary: "Auto-reply to common mistakes in designated repositories using pattern-based config and Worker-deployed plugin with tests and CI."
+constraints: [
+  "Repository-scoped behavior (no-reply repos)",
+  "Fast delivery (<2h estimate)",
+  "Workers runtime + kernel plugin pattern",
+  "Configurable responses by owner/repo/owner+repo",
+  "Automated deployment and tests"
+]
+approach: "Use plugin template; listen to `issue_comment.created`; match repo/owner patterns from config; post guidance comment; ship tests and Wrangler deploy."
+tech: ["TypeScript", "Cloudflare Workers", "@ubiquity-os/plugin-sdk", "TypeBox", "Jest", "GitHub Actions"]
+wins: [
+  "Removes contributor confusion in no-reply repos",
+  "Configurable patterns, easily extended",
+  "Automated CI + deploy for quick iteration"
+]
+outcomes:
+  - metric: "response coverage"
+    value: "pattern-based"
+    unit: "repos"
+---
+
+### Problem
+Contributors occasionally tried to self-assign or ask questions in no-reply repositories. Maintainers needed an automated way to redirect them to the correct flow.
+
+### Approach
+- Configuration maps of `owner/repo`, `owner`, and `repo` keys → message
+- Listen to `issue_comment.created`; match in order of specificity
+- Post the configured guidance comment
+- Tests for schema defaults and handler behavior
+- CI deploy via Wrangler with pinned version
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    IssueComment[GitHub Issue Comment] --> Router[Kernel Event Router]
+    Router --> Plugin[Daemon-Responder Plugin]
+    Plugin --> Matcher[Config Pattern Matcher]
+    Matcher --> Handler[Auto-Response Handler]
+    Handler --> API[Comment API]
+    API --> Posted[Response Posted]
+  `}
+/>
+
+### Outcome
+- Common missteps get a helpful automated response
+- Maintainers spend less time on repetitive redirection
+- Pattern can be extended to other repos quickly
+
+### Constraints
+- Keep latency low; avoid heavy processing in request cycle
+- Store all secrets in CI; do not log sensitive config
+
+### Design choices
+- Pattern precedence: `owner/repo` → `owner` → `repo`
+- TypeBox schema provides defaults for well-known repos
+
+### Proof
+Code excerpt — auto-response handler
+
+```ts
+export async function handleAutoResponse(context: Context) {
+  const { logger, payload: { repository }, config: { automatedResponses }, commentHandler } = context;
+  const repo = repository.name;
+  const owner = repository.owner.login;
+  const autoResponse = automatedResponses[`${owner}/${repo}`] || automatedResponses[owner] || automatedResponses[repo];
+  if (autoResponse) {
+    await commentHandler.postComment(context, logger.warn(autoResponse, { owner, repo }));
+  }
+}
+```
+
+Code excerpt — settings schema default
+
+```ts
+export const pluginSettingsSchema = T.Object({
+  /** key → message; supports `owner/repo`, `repo`, `owner` */
+  automatedResponses: T.Record(T.String(), T.String(), {
+    default: {
+      "devpool-directory": "This is a no-reply repository, please visit the task using the link in the description.",
+    },
+  }),
+});
+```
+
+CI evidence — deploy + tests (trimmed)
+
+```yaml
+- name: Deploy with Wrangler
+  uses: cloudflare/wrangler-action@v3
+  with:
+    wranglerVersion: "3.79.0"
+    apiToken: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+    accountId: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+```
+
+### References
+- Issue — [#44 - Autoresponder for DevPool Directory](https://github.com/ubiquity-os/plugins-wishlist/issues/44 "Autoresponder for DevPool Directory")
+- PR — [#1 - daemon-responder v1](https://github.com/ubiquity-os/daemon-responder/pull/1 "daemon-responder v1")
+- Files — handler, schema, tests, workflows (see PR diff)
+
+

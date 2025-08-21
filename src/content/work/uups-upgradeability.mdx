@@ -1,0 +1,213 @@
+---
+title: "UUPS Upgradeability for Core Contracts"
+clientOrProject: "Ubiquity Dollar"
+role: "Solidity Engineer (Second Major Contribution)"
+year: "2023"
+summary: "Migrated seven core smart contracts to OpenZeppelin UUPS pattern after diamond proxy incompatibility. Included comprehensive testing, admin authorization, and deployment script refactoring. Survived external security audit."
+constraints: [
+  "24-hour initial deadline with bot-enforced progress tracking",
+  "Coexist with existing diamond proxy architecture", 
+  "Preserve storage layout across upgrades without corruption",
+  "Replace constructors with initializers safely",
+  "Integrate with existing RBAC (admin/minter/burner roles)",
+  "Maintain compatibility with multi-million dollar TVL protocol"
+]
+approach: "OpenZeppelin UUPS implementation with ERC1967Proxy deployment; systematic constructor-to-initializer migration with _disableInitializers protection; admin-gated _authorizeUpgrade functions; encoded initialization payloads in proxy constructors; delegatecall-safe _msgSender usage; comprehensive Foundry test suite covering upgrade flows, authorization checks, and initialization guards."
+tech: ["Solidity 0.8.19", "OpenZeppelin Contracts Upgradeable 4.9", "ERC1967Proxy", "UUPS", "Foundry", "GitHub Actions"]
+wins: [
+  "Unlocked secure upgradeability for 7 core protocol contracts",
+  "Gas-efficient UUPS pattern vs. transparent proxy alternatives", 
+  "Comprehensive test coverage for upgrade scenarios",
+  "Passed external security audit (Sherlock.xyz) with zero findings",
+  "Earned 200 WXDAI bounty and core team recommendation"
+]
+outcomes:
+  - metric: "contracts migrated"
+    value: "7"
+    unit: "core (ERC20/ERC721/ERC1155)"
+  - metric: "audit findings"
+    value: "0"
+    unit: "security issues"
+  - metric: "reward"
+    value: "200"
+    unit: "WXDAI"
+---
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### Problem
+The Ubiquity Dollar protocol faced architectural limitations where seven core contracts (UbiquityDollarToken, UbiquityGovernanceToken, UbiquityCreditToken, CreditNft, StakingShare, ERC20Ubiquity, ERC1155Ubiquity) could not utilize the existing diamond proxy pattern due to function signature clashing. This prevented protocol evolution, bug fixes, and feature additions for critical token contracts while preserving state in a multi-million dollar TVL protocol.
+
+### Approach
+- **UUPS pattern adoption**: Implement OpenZeppelin Universal Upgradeable Proxy Standard with ERC1967 storage slots
+- **Constructor migration**: Systematically convert all constructors to `initialize` functions with `_disableInitializers()` protection on implementations
+- **Access control integration**: Gate `_authorizeUpgrade` to admin roles; maintain existing RBAC compatibility
+- **Deployment refactoring**: Update scripts to create ERC1967Proxy instances with encoded initialization payloads
+- **Proxy safety**: Replace direct `msg.sender` references with `_msgSender()` for delegatecall compatibility
+- **Comprehensive testing**: Develop Foundry test suite covering upgrade flows, authorization guards, and initialization protection
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    User[User] --> D[Diamond]
+    D --> P[UUPS Proxy ERC1967]
+    P --> V1[Implementation Contract V1]
+    V1 --> AC[Access Control Check]
+    AC --> EX[Execute Function]
+    P -.->|upgrade| V2[Implementation Contract V2]
+    V2 --> SP[State Preservation]
+  `}
+/>
+
+### Outcome
+- **Protocol unlocked**: Seven core contracts gained secure upgrade capabilities enabling future evolution
+- **Security validated**: Passed external Sherlock.xyz security audit with zero findings related to upgradeability
+- **Gas optimization**: UUPS pattern provides efficient deployments vs. transparent proxy alternatives
+- **Production readiness**: Comprehensive test coverage and deployment pipeline for multi-million dollar protocol
+- **Team recognition**: Earned 200 WXDAI bounty and core team recommendation from lead maintainer
+
+### Constraints
+- **Tight deadline**: 24-hour initial timeline with automated bot progress tracking
+- **Architecture compatibility**: Must coexist with existing diamond proxy without interference
+- **State preservation**: Maintain storage layout continuity across upgrades to prevent data corruption
+- **Role integration**: Preserve existing protocol RBAC (admin/minter/burner) without disruption
+- **Production safety**: Deploy to protocol with significant TVL requiring bulletproof upgrade mechanisms
+
+### Design choices
+- **OpenZeppelin foundation**: Use battle-tested upgradeable contract libraries with `__init`/`__init_unchained` patterns
+- **Centralized authorization**: Single `_authorizeUpgrade` function restricted to admin roles for upgrade control
+- **Atomic initialization**: Encode initialization data in proxy constructor to eliminate setup foot-guns
+- **Implementation protection**: Keep implementation contracts uninitialized via `_disableInitializers()`
+- **Delegatecall safety**: Replace `msg.sender` with `_msgSender()` for proxy context compatibility
+
+### Proof
+Code excerpt — UUPS pattern for a core token
+
+```solidity
+// packages/contracts/src/dollar/core/UbiquityCreditToken.sol
+contract UbiquityCreditToken is ERC20Ubiquity {
+  constructor() {
+    _disableInitializers();
+  }
+
+  function initialize(address manager) public initializer {
+    __ERC20Ubiquity_init(manager, "Ubiquity Credit", "uCR");
+  }
+
+  function _authorizeUpgrade(address newImplementation)
+    internal
+    override
+    onlyAdmin
+  {}
+}
+```
+
+Code excerpt — ERC1967Proxy deployment with init payload
+
+```solidity
+// packages/contracts/scripts/deploy/dollar/solidityScripting/02_UbiquityDollarToken.s.sol
+bytes memory managerPayload = abi.encodeWithSignature(
+  "initialize(address)",
+  address(diamond)
+);
+
+proxyDollarToken = new ERC1967Proxy(
+  address(new UbiquityDollarToken()),
+  managerPayload
+);
+dollarToken = UbiquityDollarToken(address(proxyDollarToken));
+IManager.setDollarTokenAddress(address(dollarToken));
+```
+
+Test evidence — comprehensive upgrade, authorization, and initialization testing
+
+```solidity
+function testUUPS_ShouldUpgradeAndCall() external {
+  CreditNftUpgraded creditNftUpgraded = new CreditNftUpgraded();
+  
+  vm.startPrank(admin);
+  bytes memory hasUpgradedCall = abi.encodeWithSignature("hasUpgraded()");
+  
+  // Verify not upgraded initially
+  (bool success, ) = address(creditNft).call(hasUpgradedCall);
+  assertEq(success, false, "should not have upgraded yet");
+  
+  creditNft.upgradeTo(address(creditNftUpgraded));
+  
+  // Verify successful upgrade
+  (success, ) = address(creditNft).call(hasUpgradedCall);
+  assertEq(success, true, "should have upgraded");
+  
+  // Ensure initialization protection
+  vm.expectRevert();
+  creditNft.initialize(address(diamond));
+  
+  vm.stopPrank();
+}
+
+function testUUPS_AdminAuth() external {
+  CreditNftUpgraded creditNftUpgraded = new CreditNftUpgraded();
+  
+  // Non-admin should fail
+  vm.expectRevert();
+  creditNft.upgradeTo(address(creditNftUpgraded));
+  
+  // Admin should succeed
+  vm.prank(admin);
+  creditNft.upgradeTo(address(creditNftUpgraded));
+  
+  bytes memory hasUpgradedCall = abi.encodeWithSignature("hasUpgraded()");
+  (bool success, bytes memory data) = address(creditNft).call(hasUpgradedCall);
+  bool hasUpgraded = abi.decode(data, (bool));
+  
+  assertEq(hasUpgraded, true, "should have upgraded");
+}
+
+function testUUPS_InitializedVersion() external {
+  // Test version tracking across upgrades
+  uint expectedVersion = 1;
+  uint baseExpectedVersion = 255;
+  
+  CreditNftUpgraded creditNftUpgraded = new CreditNftUpgraded();
+  
+  vm.startPrank(admin);
+  creditNft.upgradeTo(address(creditNftUpgraded));
+  
+  bytes memory getVersionCall = abi.encodeWithSignature("getVersion()");
+  (bool success, bytes memory data) = address(creditNft).call(getVersionCall);
+  uint8 version = abi.decode(data, (uint8));
+  
+  assertEq(version, expectedVersion, "should maintain version consistency");
+  vm.stopPrank();
+}
+```
+
+PR evidence — successful merge with maintainer collaboration
+
+```text
+"@Keyrxng pls merge https://github.com/Keyrxng/ubiquity-dollar/pull/5" - rndquu
+
+"The original spec is implemented, core contracts are upgradeable. 
+This PR still needs some refactoring (small changes in naming) but I will 
+update it in a separate PR since those changes are not really connected 
+with the UUPS" - rndquu
+
+rndquu merged commit 919c455 into ubiquity:development (Sep 21, 2023)
+24 commits across 40 files
+Earned 200 WXDAI bounty
+```
+
+External audit evidence — Sherlock.xyz security review
+
+```text
+External security audit completed via Sherlock.xyz
+Zero findings related to UUPS upgradeability implementation
+Protocol TVL: Multi-million dollars
+Audit scope: All core contracts including upgraded UUPS implementations
+```
+
+### References
+- Issue — [#774 - Add UUPS for core contracts](https://github.com/ubiquity/ubiquity-dollar/issues/774 "Add UUPS for core contracts")
+- PR — [#779 - Core UUPS migration](https://github.com/ubiquity/ubiquity-dollar/pull/779 "Core UUPS migration")
+

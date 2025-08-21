@@ -1,0 +1,118 @@
+---
+title: "Ubiquity OS Plugin Installer"
+clientOrProject: "Ubiquity OS"
+role: "Product Engineer (Replacement Developer's Task)"
+year: "2024"
+summary: "Partner-facing web UI for zero-CLI plugin installation: GitHub OAuth, organization selection, manifest parsing, YAML configuration editing, and direct repository commits. Built end-to-end in one month after original assignee made no progress."
+constraints: [
+  "Critical business need during active marketing efforts",
+  "Support 10+ plugin marketplace options with varying schemas",
+  "Write to repos via authenticated GitHub user (not bot)",
+  "Multi-org permissions and selection for enterprise partners",
+  "Preserve existing YAML structure and comments",
+  "Parse TypeBox/AJV schema objects from remote manifests",
+  "Convert HTML form inputs to strictly validated objects",
+  "Handle repository-level vs global configuration differences"
+]
+approach: "Lifted GitHub OAuth logic from work.ubq.fi; implemented org selection and repository targeting; built manifest fetching system with redirect handling; created YAML parser preserving structure; developed form-to-schema validation pipeline; added README display and plugin status indicators; coordinated cross-repository schema description updates."
+tech: ["TypeScript", "Octokit", "OAuth", "YAML", "JSON Schema"]
+wins: [
+  "Zero-CLI plugin setup for non-technical partners",
+  "Safer multi-org configuration with proper scoping",
+  "Enhanced discoverability via README and schema descriptions",
+  "Predefined templates for common configurations",
+  "Robust TypeBox/AJV schema validation preventing runtime failures",
+  "Production-ready interface supporting complex enterprise workflows"
+]
+outcomes:
+  - metric: "delivery timeline"
+    value: "1"
+    unit: "month (7 PRs merged)"
+  - metric: "project value"
+    value: "<$1,000"
+    unit: "USD (partner-facing critical infrastructure)"
+  - metric: "post-delivery issues"
+    value: "0"
+    unit: "production issues since launch"
+---
+
+### Problem
+Critical business infrastructure gap during active marketing efforts. Partners needed a streamlined browser-based way to install and configure 10+ marketplace plugins for their UbiquityOS kernel instances. The existing manual CLI-based process was blocking partner acquisition and onboarding. TypeBox/AJV schema validation complexity meant form errors would cause plugin runtime failures.
+
+### Approach
+- **GitHub OAuth integration**: Lifted authentication logic from work.ubq.fi implementation; user token for repository writes
+- **Organization and repository targeting**: List available orgs; support global vs repository-level configuration differences
+- **Manifest parsing system**: Fetch remote `manifest.json` files; parse TypeBox/AJV schema objects with redirect handling
+- **Form validation pipeline**: Convert HTML form inputs to strictly validated objects preventing plugin runtime failures
+- **YAML configuration management**: Load existing config; preserve structure and comments; support reset to defaults
+- **Enhanced discoverability**: Display plugin README; installed indicators; coordinate cross-repository schema descriptions
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    User[User] --> URL[Plugin URL]
+    URL --> UI[Installer UI]
+    UI --> Auth[GitHub Auth]
+    Auth --> Org[Organization Select]
+    Org --> Manifest[Manifest Fetch]
+    Manifest --> Editor[Configuration Editor]
+    Editor --> YAML[YAML Parser]
+    YAML --> Commit[Repository Commit]
+    Commit --> Done[Success Confirmation]
+  `}
+/>
+
+### Outcome
+- **Rapid delivery under pressure**: Completed entire system in one month (November 10 - December 5, 2024) with 7 merged PRs
+- **Production-ready partner interface**: Zero post-deployment issues; critical infrastructure supporting active marketing efforts
+- **Technical complexity solved**: Successfully handled TypeBox/AJV schema validation, form-to-object conversion, and multi-organization workflows
+- **Enhanced partner experience**: Zero-CLI setup reducing onboarding friction; comprehensive plugin discoverability and configuration management
+
+### Proof
+Code excerpt — list orgs for authenticated user
+
+```ts
+public async getGitHubUserOrgs(): Promise<string[]> {
+  const octokit = await this.getOctokit();
+  const response = await octokit.rest.orgs.listForAuthenticatedUser();
+  return response.data.map((org: { login: string }) => org.login);
+}
+```
+
+Delivery evidence — rapid feature development
+
+```text
+Nov 10, 2024: Project start
+Dec 5, 2024: Final PR merged
+Total: 7 PRs, 1 month timeline
+
+Feature progression:
+- GitHub OAuth implementation and TypeScript setup
+- Organization selection and repository targeting
+- Manifest fetching with redirect handling
+- Configuration editor with schema validation
+- UI improvements: README display, installed indicators
+- Production configuration defaults and reset functionality
+```
+
+Cross-repo coordination — schema descriptions and manifest fixes
+
+```text
+[daemon-merging #32](https://github.com/ubiquity-os-marketplace/daemon-merging/issues/32 "daemon-merging #32"), [daemon-disqualifier #55](https://github.com/ubiquity-os-marketplace/daemon-disqualifier/issues/55 "daemon-disqualifier #55"), [text-vector-embeddings #52](https://github.com/ubiquity-os-marketplace/text-vector-embeddings/issues/52 "text-vector-embeddings #52")
+```
+
+QA evidence — end-to-end functionality demonstration
+
+<video controls width="100%">
+  <source src="https://github.com/user-attachments/assets/490b4344-144d-4d10-a454-b2e61fffd9a8" type="video/mp4"/>
+  E2E UI demonstration: OAuth flow, organization selection, plugin configuration, and repository commit
+</video>
+
+### References
+- PRs — [#11 - TS-template and GitHub Auth](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/pull/11 "TS-template and GitHub Auth"), [#25 - Improvements](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/pull/25 "Improvements")
+- Issues — [#1 - Install Plugin UI](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/issues/1 "Install Plugin UI"), [#2 - Setup GitHub Authentication](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/issues/2 "Setup GitHub Authentication"), [#3 - Create add/remove config logic](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/issues/3 "Create add/remove config logic"), [#4 - Parse & import remote manifest.json](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/issues/4 "Parse & import remote manifest.json"), [#19 - UI improvements](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/issues/19 "UI improvements"), [#22 - Predefined configs](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/issues/22 "Predefined configs"), [#24 - Add parameter descriptions for core plugins](https://github.com/ubiquity-os/ubiquity-os-plugin-installer/issues/24 "Add parameter descriptions for core plugins")
+
+

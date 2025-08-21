@@ -1,0 +1,112 @@
+---
+title: "Command Start/Stop: Assignee manager for issues"
+clientOrProject: "Ubiquity OS"
+role: "Engineer"
+year: "2024"
+summary: "Start and stop work from issue comments with wallet and limits enforcement; workerized, tested, and CI-ready."
+constraints: [
+  "<1 day delivery window",
+  "Yarn/Corepack version friction in CI",
+  "Wallet required to start work",
+  "Max concurrent tasks (default 3)",
+  "Differentiate voluntary stop vs admin removal (XP)"
+]
+approach: "Plugin handles `/start` and `/stop` in issue comments; validates wallet, limits, and issue state; assigns/unassigns via GitHub API; logs and persists to Supabase; fixes CI by aligning yarn/corepack; ships tests and workerized processing."
+tech: ["TypeScript", "GitHub API (Octokit)", "Supabase", "Cloudflare Workers", "GitHub Actions", "Jest"]
+wins: [
+  "Frictionless opt-in/out on issues",
+  "Policy-aligned guardrails (wallet, limits)",
+  "Stable CI and test coverage",
+  "Modular, workerized architecture"
+]
+outcomes:
+  - metric: "delivery"
+    value: "<1d"
+    unit: "turnaround"
+---
+
+### Problem
+Hunters needed a simple way to start/stop work from issue comments without risking unintended XP penalties. The system also had to enforce prerequisites (e.g., registered wallet) and limits.
+
+### Approach
+- Parse `/start` and `/stop` from `issue_comment.created`
+- Validate: wallet present, max concurrent tasks, issue constraints
+- Assign/unassign via GitHub API; close linked PRs on stop
+- Persist events and wallet lookups via Supabase helpers
+- Workerize for responsiveness; align CI with yarn/corepack
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Client[Client Comment] --> Webhook[GitHub Webhook]
+    Webhook --> Kernel[UbiquityOS Kernel]
+    Kernel --> Parser[Command Parser]
+    Parser --> Validation[Validation Layer]
+    Validation --> DB[Supabase Database]
+    DB --> Assignment[Assignment Logic]
+    Assignment --> Response[GitHub API Response]
+  `}
+/>
+
+### Outcome
+- Comment-driven assignment flows with predictable rules
+- Reduced maintainer overhead for routine assignment changes
+- CI stabilized; coverage reported and checks enforced
+
+### Constraints
+- Urgent delivery (&lt;1 day) and iterative review cadence
+- Yarn 4/corepack alignment required in CI
+- XP policy distinction between voluntary stop and admin removal
+
+### Design choices
+- Wallet-gated `/start` to ensure payout readiness
+- Explicit limit checks; fail fast with actionable messages
+- Separate adapters for GitHub and Supabase; testable boundaries
+- Backgroundable/workerized handlers to keep responses snappy
+
+### Proof
+Code excerpt — core start/stop branching with wallet guard
+
+```ts
+// handlers (trimmed)
+if (command === "start") {
+  if (!userWallet && config.startRequiresWallet) {
+    throw new Error("Wallet required to start tasks");
+  }
+  await assignUserToIssue(context, issue, user);
+} else if (command === "stop") {
+  await unassignUserFromIssue(context, issue, user);
+  await closeLinkedPullRequests(context, issue, user);
+}
+```
+
+Code excerpt — Supabase helper for wallet lookup
+
+```ts
+export async function getUserWallet(userId: number): Promise<string | null> {
+  const { data, error } = await supabase
+    .from("wallets")
+    .select("address")
+    .eq("user_id", userId)
+    .single();
+  if (error || !data) return null;
+  return data.address;
+}
+```
+
+CI and review evidence — workflow and coverage (trimmed)
+
+```text
+All checks passed. Corepack/yarn version aligned; coverage reported.
+Merged with multi-review iteration.
+```
+
+### References
+- Issue — [#9 - command/[start | stop]](https://github.com/ubiquity-os/plugins-wishlist/issues/9 "command/[start | stop]")
+- PR — [#1 - command-start-stop init](https://github.com/ubiquity-os-marketplace/command-start-stop/pull/1 "command-start-stop init")
+- Files — handlers, adapters, workflow (see PR diff)
+
+

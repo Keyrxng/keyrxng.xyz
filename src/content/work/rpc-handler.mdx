@@ -1,0 +1,105 @@
+---
+title: "Dynamic Web3 RPC Handler"
+clientOrProject: "Ubiquity"
+role: "Product Engineer"
+year: "2024"
+summary: "Production-grade handler that ranks RPC endpoints by latency, rotates on error via a Proxy-wrapped provider, and ships with dual CJS/ESM + types."
+constraints: [
+  "Cross-platform (browser + Node) usage",
+  "Bounded request timeouts and fast failure",
+  "Chainlist integration without esbuild conflicts",
+  "Type-safe API with declaration output",
+  "Tight delivery window (<1 week for core)"
+]
+approach: "Latency probes rank endpoints; Proxy wraps the provider to retry on errors; cache latencies (localStorage in browser, in-memory in Node); integrate Chainlist with local extras; publish dual CJS/ESM + types."
+tech: ["TypeScript", "Node.js", "Ethers.js (JsonRpcProvider)", "esbuild", "GitHub Actions"]
+wins: [
+  "Reliable production usage across pay.ubq.fi and related apps",
+  "Automatic rotation eliminated manual blacklists and UI flicker",
+  "Dual CJS/ESM bundles + exported types",
+  "Solid CI coverage and release workflow"
+]
+outcomes:
+  - metric: "failures"
+    value: "0"
+    unit: "reported during my tenure"
+  - metric: "selection"
+    value: "<=1500"
+    unit: "ms"
+---
+
+### Problem
+The ecosystem needed a dynamic RPC selection system for reliable Web3 operations. Manual blacklisting caused brittleness and UI flicker. The handler had to automatically detect failing endpoints, rank healthy ones by latency, and switch seamlessly without developer or user intervention.
+
+### Approach
+- Import Chainlist and maintain `extraRpcs` locally to avoid build conflicts
+- Probe endpoints with short, bounded timeouts; rank by measured latency; drop failures
+- Wrap `JsonRpcProvider` in a `Proxy` that, on call error, rotates to the next best provider and retries transparently
+- Cache latencies in the appropriate runtime (browser: `localStorage`, Node: in-memory) with refresh cycles
+- Ship dual CJS/ESM outputs and `.d.ts` types for first-class TypeScript ergonomics
+
+import Mermaid from "../../components/Mermaid.astro";
+import DownloadsChart from "../../components/DownloadsChart.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    App[Client Application] --> GetInstance[RPCHandler getInstance]
+    GetInstance --> Race[Promise race RPC endpoints]
+    Race --> Rank[Latency ranking]
+    Rank --> Select[JsonRpcProvider selection]
+    Select --> Proxy[Proxy wrapper]
+    Proxy --> Rotate[Error handling with rotation]
+    Rotate --> Response[Response to client]
+  `}
+/>
+
+### Outcome
+- Deployed across Ubiquity apps with reliable behavior and zero reported failures during my tenure
+- Reduced operator toil and removed the need for manual blacklists
+- Production-ready packaging: ESM + CJS + types
+
+### Proof
+Code excerpt — provider proxy (from the implemented handler)
+
+```ts
+private _createProxy(provider: JsonRpcProvider): JsonRpcProvider {
+  return new Proxy(provider, {
+    get: (target, prop) => {
+      if (typeof (target as any)[prop] === 'function') {
+        return async (...args: unknown[]) => {
+          try {
+            return await (target as any)[prop].apply(target, args);
+          } catch (error: any) {
+            // Rotate to next fastest healthy RPC and retry
+            const nextProvider = await this.getFastestRpcProvider();
+            return await (nextProvider as any)[prop].apply(nextProvider, args);
+          }
+        };
+      }
+      return (target as any)[prop];
+    }
+  });
+}
+```
+
+Example usage — selecting a fastest RPC for a given network (original article)
+
+```ts
+import { getFastestRpc } from "web3-rpc-speed-racer";
+
+// Supply your Network ID
+const rpc = await getFastestRpc(1);
+// Use rpc for your web3 provider
+```
+
+### Adoption
+
+<DownloadsChart title="@ubiquity-dao/rpc-handler — weekly downloads" variant="full" interactive={true} />
+
+### References
+- PRs — [#1 - Web3 RPC Handler implementation](https://github.com/ubiquity/rpc-handler/pull/1 "Web3 RPC Handler implementation"), [#24 - Proxify provider implementation](https://github.com/ubiquity/rpc-handler/pull/24 "Proxify provider implementation"), [#28 - Improved constants and types](https://github.com/ubiquity/rpc-handler/pull/28 "Improved constants and types")
+- Issues — [#3 - Implement Dynamic RPC pick handler](https://github.com/ubiquity/rpc-handler/issues/3 "Implement Dynamic RPC pick handler"), [#23 - Proxify returned provider](https://github.com/ubiquity/rpc-handler/issues/23 "Proxify returned provider"), [#27 - Improved constants](https://github.com/ubiquity/rpc-handler/issues/27 "Improved constants"), [#54 - Unreliability concerns (vindication)](https://github.com/ubiquity/rpc-handler/issues/54 "Unreliability concerns (vindication)")
+
+

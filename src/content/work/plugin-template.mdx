@@ -1,0 +1,137 @@
+---
+title: "UbiquityOS Plugin Template"
+clientOrProject: "Ubiquity OS"
+role: "Product Engineer"
+year: "2024"
+summary: "Standardized scaffold with dual entry points (Actions + Workers), Supabase adapters, TypeBox validation, and CI for tests and linting."
+constraints: [
+  "Reduce debt from generic TS templates (remove unused tooling)",
+  "Support GitHub Actions and Cloudflare Workers from one codebase",
+  "Config validation moved kernel-side; simplify plugin defaults",
+  "Token surface migration (use UBIQUIBOT_TOKEN vs GITHUB_TOKEN)",
+  "Fast initial cut (<1–2h) with iterative refinement"
+]
+approach: "Start from `ubiquity/ts-template`; strip unused deps; add dual entry points (`src/main.ts`, `src/worker.ts`); consolidate shared types/utilities; include Supabase adapter layer; add TypeBox validation; ship CI for Jest, ESLint, and Knip."
+tech: ["TypeScript", "Cloudflare Workers", "GitHub Actions", "Supabase", "TypeBox", "Jest", "ESLint", "Knip"]
+wins: [
+  "Minutes to first plugin draft vs hours of scaffolding",
+  "Consistent structure across marketplace plugins",
+  "Clear separation of Actions vs Worker entrypoints",
+  "Built-in tests and validation from day one"
+]
+outcomes:
+  - metric: "template adoption"
+    value: "public"
+    unit: "template"
+---
+
+### Problem
+Plugin authors were cloning assorted repos and hand-assembling scaffolds, leading to inconsistent structures and wasted time. A standard template needed to encode the working patterns used across successful plugins.
+
+### Approach
+- Base on `ubiquity/ts-template` but remove unused scaffolding (e.g., cypress, esbuild)
+- Provide dual entry points: `src/main.ts` (Actions) and `src/worker.ts` (Workers)
+- Ship shared context/types/utils and a Supabase adapter layer
+- Validate inputs with TypeBox; keep runtime checks explicit
+- Include CI for Jest coverage, ESLint, and Knip dependency analysis
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Dev[Developer] --> Clone[Template Clone]
+    Clone --> TS[TypeScript Setup]
+    TS --> Ctx[Context Initialization]
+    Ctx --> Impl[Plugin Logic Implementation]
+    Impl --> Deploy[Dual Deploy]
+    Deploy --> Actions[Actions]
+    Deploy --> Workers[Workers]
+    Workers --> Integrate[UbiquityOS Integration]
+    Actions --> Integrate
+  `}
+/>
+
+### Outcome
+- Faster ramp for new plugins; authors focus on business logic
+- Consistent project layout improves maintainability and reviews
+- Tests and validation present from the start
+
+### Constraints
+- Kernel-side validation reduced plugin defaults surface
+- Token naming transitions required (`UBIQUIBOT_TOKEN` over `GITHUB_TOKEN`)
+- Worker plugin direction tracked in a separate issue (blocked items managed)
+
+### Design choices
+- Keep both entry paths thin; push logic into shared modules
+- Prefer explicit runtime validation for external entry points
+- Externalize all secrets via `.env.example`; no hardcoded tokens
+
+### Proof
+Code excerpt — Actions entry with shared context
+
+```ts
+export async function plugin(inputs: PluginInputs) {
+  const {
+    eventName,
+    eventPayload: payload,
+    settings,
+    authToken: env.UBIQUIBOT_TOKEN,
+  } = inputs;
+
+  const context = {
+    eventName: payload.eventName,
+    eventPayload: JSON.parse(payload.eventPayload),
+    settings,
+    authToken: env.UBIQUIBOT_TOKEN,
+  };
+  return await runPlugin(context);
+}
+```
+
+Code excerpt — Worker entry with TypeBox validation
+
+```ts
+export default {
+  async fetch(request: Request, env: Env): Promise<Response> {
+    const webhookPayload = await request.text();
+    const parsed = Type.Object({ eventName: Type.String(), eventPayload: Type.String() });
+    const validation = Value.Check(parsed, JSON.parse(webhookPayload));
+    if (!validation) return new Response("Invalid payload", { status: 400 });
+    return await plugin(JSON.parse(webhookPayload));
+  },
+};
+```
+
+CI evidence — Jest coverage workflow
+
+```yaml
+name: Run Jest testing suite
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Build"]
+    types: [completed]
+jobs:
+  testing:
+    permissions: write-all
+    runs-on: ubuntu-latest
+    steps:
+      - uses: ArtiomTr/jest-coverage-report-action@v2
+        with:
+          package-manager: yarn
+```
+
+Release evidence — template init merged with CI in place
+
+```text
+Merged 12 commits into main (template initialization and CI wiring).
+```
+
+### References
+- Repo — [ubiquity-os/plugin-template](https://github.com/ubiquity-os/plugin-template "ubiquity-os/plugin-template")
+- PR — [#1 - template init](https://github.com/ubiquity-os/plugin-template/pull/1 "template init")
+- Issue — [#9 - worker plugin direction](https://github.com/ubiquity-os/plugin-template/issues/9 "worker plugin direction")
+
+

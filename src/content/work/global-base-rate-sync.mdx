@@ -1,0 +1,126 @@
+---
+title: "Global Base Rate Change Detection and Label Sync"
+clientOrProject: "Ubiquity OS"
+role: "Plugin Engineer (Peak Performance Period)"
+year: "2024"
+summary: "Detect configuration changes and trigger organization-wide price label synchronization. Simple concept, complex execution due to TypeScript constraints, review overhead, and the package manager field controversy that started my downfall."
+constraints: [
+  "Organization config visibility limits without elevated permissions",
+  "GitHub secondary rate limits requiring 5s delays between operations",
+  "Cloudflare Workers ESM runtime compatibility",
+  "Complex TypeScript generic constraints and type safety",
+  "Rapid delivery expectation (<4 hours) vs extensive review cycles",
+  "Package manager field standardization resistance from leadership"
+]
+approach: "Push event monitoring with commit diff analysis; regex parsing for base rate changes; global label synchronization with excludeRepos configuration; ESM module conversion for compatibility; kernel integration via dispatch events; comprehensive testing and QA validation."
+tech: ["TypeScript", "Cloudflare Workers", "GitHub REST API (Octokit)", "UbiquityOS Kernel", "ES Modules", "Jest"]
+wins: [
+  "Automated pricing consistency across repos",
+  "Reduced manual updates and operator burden",
+  "Kernel integration for stateful workflows",
+  "ESM fixes improved plugin ecosystem stability"
+]
+outcomes:
+  - metric: "delivery timeline"
+    value: "3"
+    unit: "months (July-October due to review cycles)"
+---
+
+### Problem
+Price labels across organization repositories became inconsistent when base rate configurations changed, requiring manual updates that were error-prone and time-consuming. The organization needed automated synchronization to maintain pricing coherence across the ecosystem while respecting repository exclusions and permission boundaries.
+
+### Approach
+- Detect changes to `.github/.ubiquity-os/config.yml` and `dev-config.yml` on push
+- Compute commit file changes; skip branch-creation pushes
+- Trigger global label synchronization with `excludeRepos` configuration
+- Ensure ESM compatibility (package `type: module`) for Octokit/logger
+- Replace fatal exits with proper errors; return results to kernel via dispatch
+- Provide test coverage and QA validation; wire CI and signatures
+
+### Outcome
+- **Automated pricing consistency**: Successful organization-wide label synchronization respecting repository exclusions
+- **Complex technical implementation**: Solved TypeScript generic constraints, ESM compatibility, and kernel integration challenges  
+- **Extended delivery timeline**: Three-month development cycle (July-October 2024) due to extensive review overhead and technical discussions
+- **Career impact**: Package manager field standardization controversy became a recurring source of friction with leadership
+
+### Constraints
+- Limited access to org-level config without elevated GitHub App permissions
+- Secondary rate limits necessitate paced updates across repositories
+- Worker ESM constraints required module and tooling alignment
+
+### Design choices
+- Push-event gate: skip branch creation (`before === ZERO_SHA`)
+- Explicit file allowlist for detection; log early exits
+- Configurable global update with `excludeRepos` guardrails
+- Kernel feedback via `createDispatchEvent` for stateful flows
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Push[Push Event] --> Detect[Config Change Detection]
+    Detect --> Trigger[Global Update Trigger]
+    Trigger --> Enum[Repository Enumeration]
+    Enum --> Sync[Label Synchronization]
+    Sync --> Response[Kernel Response]
+    Response --> State[State Update]
+  `}
+/>
+
+### Proof
+Code excerpt — base rate change detection
+
+```ts
+export const ZERO_SHA = "0000000000000000000000000000000000000000";
+const BASE_RATE_FILES = [DEV_CONFIG_FULL_PATH, CONFIG_FULL_PATH];
+
+export async function isConfigModified(context: Context): Promise<boolean> {
+  if (!isPushEvent(context)) return false;
+  const { logger, payload } = context;
+  if (payload.before === ZERO_SHA) return false; // new branch
+  const changes = getCommitChanges(payload.commits);
+  if (changes && changes.length === 0) return false;
+  let shouldUpdateBaseRate = false;
+  for (const file of BASE_RATE_FILES) {
+    if (changes.includes(file)) { shouldUpdateBaseRate = true; break; }
+  }
+  return shouldUpdateBaseRate;
+}
+```
+
+Manifest excerpt — global update configuration
+
+```json
+{
+  "name": "Assistive pricing",
+  "ubiquity:listeners": ["repository.created", "issues.opened", "issues.labeled", "issues.unlabeled", "label.edited", "issue_comment.created", "push"],
+  "configuration": {
+    "properties": {
+      "globalConfigUpdate": {
+        "type": "object",
+        "properties": { "excludeRepos": { "type": "array", "items": { "type": "string" } } },
+        "required": ["excludeRepos"]
+      }
+    }
+  }
+}
+```
+
+Review timeline evidence — complex discussions and delays
+
+```text
+July 25, 2024: Initial package manager field discussion
+July 26-30: TypeScript generic constraints debate  
+August 6-8: Pattern scrutiny and code style discussions
+September 21: Conflict resolution request (months later)
+October 24: Final QA and merge completion
+Total: 3-month development cycle
+```
+
+### References
+- Issue — [#8 - base rate change trigger](https://github.com/ubiquity-os/plugins-wishlist/issues/8 "base rate change trigger")
+- PR — [#18 - global label change via config](https://github.com/ubiquity-os-marketplace/daemon-pricing/pull/18 "global label change via config")
+
+

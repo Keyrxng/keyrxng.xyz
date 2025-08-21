@@ -1,0 +1,104 @@
+---
+title: "Payment Portal: Sub-second load performance"
+clientOrProject: "Ubiquity"
+role: "Product Engineer"
+year: "2024"
+summary: "Cut load time from ~12.5s to sub-1s by consolidating providers, batching calls, pruning assets, and rendering optimistically."
+constraints: [
+  "RPC latency ~400ms/request on Gnosis",
+  "40+ network requests at load",
+  "Maintain functional parity",
+  "Tight time window (<4h initial)",
+  "CI race conditions (nonce too low)"
+]
+approach: "Single optimal provider; batch/trim RPCs; hardcode stable token metadata; move network logic out of render paths; optimistic UI; asset minification; CI waits and funding sequencing."
+tech: ["TypeScript", "ethers.js", "esbuild", "GitHub Actions"]
+wins: [
+  "Sub-1s initial render",
+  "65% fewer requests (≈40 → 14-18)",
+  "Bundle cut ~8.2MB → ~3.9MB",
+  "More reliable CI runs"
+]
+outcomes:
+  - metric: "initial render"
+    value: "<1"
+    unit: "s"
+---
+
+### Problem
+The payment portal took ~12.5s to become usable, issuing ~40 requests and repeating provider detection logic, causing long delays and UI flicker.
+
+### Approach
+- Create one optimal provider instance and reuse it
+- Pre-configure token symbol/decimals for known assets
+- Reduce and batch RPC calls (chainId, blockNumber, eth_calls)
+- Render immediately from static permit data; fetch treasury after
+- Minify CSS/JS and prune dead assets
+- Add CI waits for Anvil and sequence funding
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    User[User loads page] --> RPC[Optimal RPC provider selection]
+    RPC --> Static[Static permit data rendering]
+    Static --> Async[Async treasury data fetching]
+    Async --> Updates[Dynamic balance/allowance updates]
+    Updates --> Ready[Fully loaded claim interface]
+  `}
+/>
+
+### Outcome
+- Sub-second UI, 65% fewer requests, ~50% bundle reduction
+- Cleaner user feedback and fewer flickers
+- CI stabilized for predictable test runs
+
+### Proof
+Code excerpt — optimal provider selection (trimmed)
+
+```ts
+export async function getOptimalProvider(networkId: number) {
+  if (networkId === 31337)
+    return new ethers.providers.JsonRpcProvider("http://127.0.0.1:8545", { name: "http://127.0.0.1:8545", chainId: 31337, ensAddress: "" });
+  const promises = networkRpcs[networkId].map(async (baseURL: string) => {
+    try {
+      const startTime = performance.now();
+      // … measure and pick fastest
+```
+
+Code excerpt — optimistic render + async treasury
+
+```ts
+renderDetailsFields([
+  { name: "From", value: `${permit.owner}` },
+  { name: "Balance", value: "Loading..." },
+  { name: "Allowance", value: "Loading..." },
+]);
+table.setAttribute(`data-claim`, "ok");
+table.setAttribute(`data-contract-loaded`, "true");
+const { balance, allowance } = await fetchTreasury(permit.permit.permitted.token, permit.owner, provider);
+```
+
+Performance notes
+
+```text
+Before: ~40 requests → 14–18; ~6–7s → 1.8–3s; 8.2MB → 3.9MB. Sub-1s UI via optimistic render.
+```
+
+CI waits and funding sequencing (trimmed)
+
+```yaml
+- name: Wait for Anvil
+  run: |
+    for i in {1..30}; do curl -s http://localhost:8545 && break; sleep 1; done || exit 1
+- name: Fund test accounts
+  run: yarn test:fund
+```
+
+### References
+- Issues/PRs — performance + sub-1s UI: [#158](https://github.com/ubiquity/pay.ubq.fi/issues/158 "pay.ubq.fi #158"), [#163](https://github.com/ubiquity/pay.ubq.fi/pull/163 "pay.ubq.fi #163"), [#168](https://github.com/ubiquity/pay.ubq.fi/issues/168 "pay.ubq.fi #168"), [#169](https://github.com/ubiquity/pay.ubq.fi/pull/169 "pay.ubq.fi #169")
+- Files — helpers.ts, insert-table-data.ts (see PR diffs)
+
+

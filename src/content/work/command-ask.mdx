@@ -1,0 +1,114 @@
+---
+title: "Command-Ask: Context-aware GitHub AI Assistant"
+clientOrProject: "Ubiquity OS Marketplace"
+role: "Product Engineer"
+year: "2024"
+summary: "Edge-deployed GitHub agent that recursively gathers linked context, filters noise, and answers with a multi-stage LLM pipeline—fast, citable, and CI-deployed."
+constraints: [
+  "Low-latency responses on Workers (≈30s cap)",
+  "LLM context window limits (token budget)",
+  "API quotas (GitHub, OpenRouter)",
+  "Webhook auth + app permissions only",
+  "Cost discipline for deep context fetches"
+]
+approach: "Cloudflare Worker handling GitHub webhooks; recursively fetch referenced issues/PRs; structure chat history and prioritize the user's question; ignore bot comments; optionally embed + search; call model via OpenRouter; post reply; CI deploy with branch-scoped workers."
+tech: ["Cloudflare Workers", "TypeScript", "Octokit", "OpenRouter (Claude 3.5 Sonnet)", "Voyage embeddings", "Supabase + pgvector", "Jest", "Wrangler"]
+wins: [
+  "High-context answers across linked issues/PRs",
+  "Deterministic webhook pipeline on the edge",
+  "Branch-based deploys for safe iteration",
+  "Ground-truthing and bot-comment filtering reduce noise"
+]
+outcomes:
+  - metric: "deployability"
+    value: "branch-scoped"
+    unit: "workers"
+---
+
+### Problem
+GitHub conversations span linked issues, PRs, code diffs, and cross-referenced discussion chains ("closes #12", inline mentions) that ordinary chatbots historically ignored. Early (V1 kernel) attempts at AI replies either hallucinated due to shallow context or blew past token limits when naively concatenating whole threads. After the V2 kernel deployment the plugin had to be rewritten to match new webhook + execution boundaries, then stabilized again post-refactors. Repeated token limit failures and review debates over whether to bound recursion depth vs “grab everything” created friction and delayed adoption. The agent needed to (a) assemble *just enough* linked context deterministically, (b) stay under window + runtime limits, (c) answer directly in-thread via webhooks without elevated auth, and (d) avoid bot noise feedback loops.
+
+### Approach
+- Multi-version implementation: initial greenfield (Kernel V1) → full rewrite for Kernel V2 surface changes → stabilization pass after post-deploy refactors (ensured portability of design choices).
+- Worker entry processes `issue_comment.created` (extensible to PR review comments) with strict event shape validation.
+- Depth-limited recursive context fetch: follow referenced issues/PRs (e.g. "closes", raw `#123` mentions, embedded URLs); early advocacy for configurable depth to avoid token blowouts (adopted after repeated quota/time errors).
+- Multi-stage prompt: system (behavioral guardrails) → compact ordered context blocks → assistant acknowledgment scaffold → user question surfaced early → answer synthesis. Question-first ordering reduces drift.
+- Selective inclusion policy: strip bot / known automation authors to prevent echo-amplification; dedupe repeated quoted blocks; truncate oversized diffs with sentinel markers.
+- Optional embeddings (Voyage + pgvector) to recover semantically relevant older context when recursion depth boundary reached.
+- Token budgeting heuristic: track rolling byte/token estimates; short-circuit additional fetch recursion when > configurable threshold (e.g. 60% of window) to preserve answer capacity.
+- Branch-scoped Workers (RFC 1035 normalized names) for parallel QA and safe iteration; per-branch env var isolation.
+- Ground-truth / regression harness: canned issue comment fixtures + expected answer shape (format, citation ordering) to detect drift across model/provider changes.
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Webhook[GitHub Webhook] --> Action[GitHub Action]
+    Action --> Context[Context Fetcher]
+    Context --> LLM[LLM Processing]
+    LLM --> Reply[Response Generation]
+    Reply --> Callbacks[Proxy Callbacks]
+    Callbacks --> Comment[GitHub Comment Reply]
+  `}
+/>
+
+### Outcome
+- High-context answers grounded in linked discussion chains (reduced follow-up "see above" chatter, qualitative review feedback).
+- Build/runtime stability across kernel version transitions (three lifecycle passes without architectural rewrite after mapped recursion adopted).
+- Significant reduction in token limit / 413 errors once depth cap + heuristic budgeting enforced (post-adoption incidents became rare edge cases involving unusually large diffs).
+- Faster iteration loop via branch-scoped Workers → parallel QA of prompt adjustments without production regressions.
+- Extensible foundation: embedding toggle and callback pipeline allow future tool invocation / function calling without reworking core ingestion.
+
+### Constraints
+- Worker runtime + webhook timeouts (≈30s hard cap) for worst-case recursion + embedding path.
+- Token window pressure (answer reserve ≥ 35–40% window) to avoid truncated outputs.
+- GitHub + OpenRouter API quotas; must batch + cache per invocation.
+- App-scoped auth only (no user tokens) enforcing least privilege.
+- Cost controls: embeddings optional & gated; early depth termination.
+
+### Design choices
+- Depth-limited recursion (configurable) → predictable token ceiling.
+- Bot / automation author filter → removes self-training loops and noisy boilerplate.
+- Question-first ordering → preserves semantic focus under heavy context load.
+- Heuristic token budgeting (stop fetching when context slice budget exceeded) → prevents late failures.
+- Embedding augmentation is opt-in; pure lexical path remains fast.
+- Proxy callback path defers long tasks (e.g. embedding generation) to async pipeline while returning placeholder acknowledgment.
+
+### Proof
+Code excerpt — recursive linked-context fetch (depth-limited)
+
+```ts
+// Recursive issue and PR context fetching with depth control
+const fetchLinkedContext = async (issueUrl: string, depth: number = 0): Promise<Context[]> => {
+  if (depth >= MAX_DEPTH) return [];
+  const issue = await octokit.issues.get({
+    owner: parseOwner(issueUrl),
+    repo: parseRepo(issueUrl),
+    issue_number: parseNumber(issueUrl)
+  });
+  const linkedUrls = extractGitHubUrls(issue.data.body);
+  const contexts = await Promise.all(linkedUrls.map(url => fetchLinkedContext(url, depth + 1)));
+  return [buildContext(issue.data), ...contexts.flat()];
+};
+```
+
+Log/PR evidence — scope and CI status (trimmed)
+
+```text
+PR #1 merged: 58 commits, +1,664 / −769; 2 checks passed. Worker deployed with branch-scoped name (RFC 1035 compliant). [#1 - "@ubiquityos gpt command"](https://github.com/ubiquity-os-marketplace/command-ask/pull/1 "@ubiquityos gpt command")
+```
+
+Test evidence — Jest suite exercising chat history + linked context (described in PR)
+
+```text
+Chat history and linked context tests run under Jest with GitHub API mocks.
+```
+
+### References
+- Issue — [#29 - /gpt ask a context aware question](https://github.com/ubiquity-os/plugins-wishlist/issues/29 "/gpt ask a context aware question")
+- PR — [#1 - "@ubiquityos gpt command"](https://github.com/ubiquity-os-marketplace/command-ask/pull/1 "@ubiquityos gpt command")
+- Repo — [ubiquity-os-marketplace/command-ask](https://github.com/ubiquity-os-marketplace/command-ask "ubiquity-os-marketplace/command-ask")
+
+

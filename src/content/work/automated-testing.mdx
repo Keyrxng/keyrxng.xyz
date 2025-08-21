@@ -1,0 +1,228 @@
+---
+title: "Automated Testing Infrastructure"
+clientOrProject: "Ubiquity"
+role: "Product Engineer"
+year: "2024"
+summary: "Stabilized E2E, unit, and blockchain test workflows with Cypress, Jest, and Foundry—fast, deterministic, and CI-ready."
+constraints: [
+  "RPC stability and latency variance",
+  "Mobile browsers lack window.ethereum",
+  "CI timeouts and flaky environment setup",
+  "MetaMask testing complexity",
+  "External API dependencies"
+]
+approach: "Combine Cypress E2E, Jest unit tests, and Foundry/Anvil fork; stabilize environments via intelligent RPC selection and reliable funding scripts; stub wallet/provider and mock external APIs; wire into GitHub Actions with coverage reporting."
+tech: ["Cypress", "Jest", "Foundry/Anvil", "Ethers.js", "MSW", "GitHub Actions", "TypeScript"]
+wins: [
+  "Eliminated mobile testing inconsistencies with wallet stubs",
+  "Deterministic local chain via Anvil with RPC performance selection",
+  "Stabilized CI with retries and bounded timeouts",
+  "Unit + E2E coverage with actionable reports"
+]
+outcomes:
+  - metric: "coverage"
+    value: ">=90"
+    unit: "%"
+---
+
+### Problem
+Intermittent failures across projects stemmed from brittle RPCs, unreliable local chain funding, and the lack of `window.ethereum` in mobile browsers. CI jobs stalled or flaked, and test coverage was insufficient for production confidence.
+
+### Scope & ownership
+Implemented and/or maintained test infrastructure across multiple repositories:
+- Payment portal (ongoing ownership: E2E + funding scripts + RPC latency gating)
+- Devpool directory (coverage ramp + CI wiring)
+- Logger package (green-field Jest + coverage reporters)
+- Permit / auxiliary services (bootstrap scaffolds)
+Focus remained on making failures *actionable* by eliminating environmental entropy before assertions executed.
+
+### Approach
+- Cypress for E2E flows with `window.ethereum` stubs and targeted RPC intercepts
+- Foundry/Anvil for deterministic local forks with automatic RPC performance selection and retries
+- Funding scripts with idempotent steps to avoid nonce conflicts
+- Jest for unit testing with MSW to isolate external APIs
+- GitHub Actions integration with parallelized setup and coverage reporting
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Client[Client] --> MMStub[MetaMask Stub]
+    MMStub --> RPCSel[Anvil RPC Selection]
+    RPCSel --> Fork[Optimal RPC Fork]
+    Fork --> Funding[Funding Script]
+    Funding --> Tests[Test Execution]
+    Tests --> Coverage[Coverage Report]
+    Coverage --> CI[CI Artifacts]
+  `}
+/>
+
+### Outcome
+- Reliable E2E and unit tests that run locally and in CI
+- Bounded latencies and fast failure on unhealthy RPCs
+- Deterministic funding across runs; eliminated nonce-too-low errors
+- Consolidated coverage and logs surfaced directly in PRs
+ - Coverage target (≥90%) enforced where mandated without sacrificing readability
+
+### Constraints
+- Mobile browsers do not expose `window.ethereum`; avoid extension-bound automation
+- CI runtime budget and queue time sensitivity
+- External API rate limits and availability
+- Forked chain must match production contracts and state for tests
+
+### Design choices
+- Prefer stubbing MetaMask (`window.ethereum`) over full extension automation for reliability
+- Rank RPCs by latency, fork with the fastest healthy endpoint, and retry on failure
+- Separate funding into explicit, idempotent steps (impersonate → approve → transfer)
+- Mock external APIs with MSW for deterministic tests
+- Surface coverage and logs via dedicated CI steps
+
+### Proof
+Code excerpt — Anvil RPC selection and retry
+
+```ts
+class Anvil {
+  rpcs: string[] = [];
+  rpcHandler: RPCHandler | null = null;
+
+  async init() {
+    this.rpcHandler = await useHandler(100);
+    console.log(`[RPCHandler] Fetching RPCs...`);
+    await this.rpcHandler.testRpcPerformance();
+    const latencies: Record<string, number> = this.rpcHandler.getLatencies();
+    const sorted = Object.entries(latencies).sort(([, a], [, b]) => a - b);
+    this.rpcs = sorted.map(([rpc]) => rpc.split("__")[1]);
+  }
+
+  async spawner(rpc?: string): Promise<boolean> {
+    if (!rpc) return false;
+    const anvil = spawnSync("anvil", [
+      "--chain-id", "31337",
+      "--fork-url", rpc,
+      "--host", "127.0.0.1",
+      "--port", "8545",
+    ], { stdio: "inherit" });
+    if (anvil.status !== 0) {
+      return this.spawner(this.rpcs.shift());
+    }
+    return true;
+  }
+}
+```
+
+Code excerpt — Cypress MetaMask stub and RPC intercepts
+
+```ts
+function stubEthereum(address?: string, signer?: JsonRpcSigner) {
+  cy.on("window:before:load", (win) => {
+    (win as any).ethereum = {
+      isMetaMask: true,
+      enable: cy.stub().resolves([address]),
+      request: cy.stub().callsFake(async (method) => providerFunctions(method)),
+      on: cy.stub().callsFake((event, cb) => {
+        if (event == "accountsChanged") {
+          (win as any).ethereum.onAccountsChanged = cb;
+        }
+      }),
+      autoRefreshOnNetworkChange: false,
+      chainId: "0x7a69",
+      selectedAddress: address,
+      requestAccounts: cy.stub().resolves([address]),
+      send: cy.stub().callsFake(async (method) => providerFunctions(method)),
+    };
+    signer ? ((win as any).signer = signer) : null;
+  });
+}
+
+function setupIntercepts() {
+  cy.intercept("POST", "*", (req) => {
+    if (req.body.method == "eth_getBlockByNumber") {
+      req.reply({ statusCode: 404, body: { jsonrpc: "2.0", error: { code: -32601, message: "Method not found" }, id: 1 } });
+    }
+    if (req.body.method == "eth_call") {
+      const selector = req.body.params.data.slice(0, 10);
+      if (selector == "0x70a08231") {
+        req.reply({ statusCode: 200, body: { jsonrpc: "2.0", id: 45, result: "0x00000000000000000000000000000000000000000000478cf7610f95b9e70000" } });
+      }
+    }
+  });
+}
+```
+
+Log evidence — deterministic setup and funding
+
+```text
+[RPCHandler] Fetching RPCs...
+Fetched 12 RPCs.
+Fastest: gnosis__https://gnosis.drpc.org (45ms)
+Slowest: gnosis__https://rpc.gnosischain.com (890ms)
+Starting Anvil...
+Forking with RPC: https://gnosis.drpc.org
+Anvil setup complete
+Attempting to fund the testing environment
+Running step: impersonate
+Running step: approveFunding
+Running step: transfer
+Funding complete
+```
+
+CI workflow — Foundry + Cypress with coverage comment
+
+```yaml
+name: test
+on:
+  push:
+    branches: [main, development]
+  pull_request:
+    branches: [main, development]
+env:
+  FOUNDRY_PROFILE: ci
+jobs:
+  tests:
+    name: Cypress tests
+    runs-on: ubuntu-latest
+    steps:
+      - name: Install Foundry
+        uses: foundry-rs/foundry-toolchain@v1
+        with:
+          version: nightly
+      - name: Start Anvil
+        run: yarn test:anvil &
+      - name: Cypress run
+        uses: cypress-io/github-action@v6
+        with:
+          build: yarn run build
+          start: yarn test:fund, yarn start
+      - name: Jest Coverage Comment
+        if: always()
+        uses: MishaKav/jest-coverage-comment@main
+        with:
+          coverage-summary-path: coverage/coverage-summary.json
+          junitxml-path: junit.xml
+          coverage-path: ./coverage.txt
+```
+
+Jest setup — scripts and reporters
+
+```json
+{
+  "scripts": { "test": "jest" },
+  "devDependencies": {
+    "@types/jest": "^29.5.12",
+    "jest": "^29.7.0",
+    "jest-junit": "^16.0.0",
+    "jest-md-dashboard": "^0.8.0",
+    "ts-jest": "^29.1.5"
+  }
+}
+```
+
+### References
+- E2E tests and RPC intercepts — [#225](https://github.com/ubiquity/pay.ubq.fi/pull/225 "pay.ubq.fi #225")
+- Improved Anvil setup and funding — [#230](https://github.com/ubiquity/pay.ubq.fi/pull/230 "pay.ubq.fi #230")
+- Logger unit tests and coverage — [#6](https://github.com/ubiquity-os/ubiquity-os-logger/pull/6 "ubiquity-os-logger #6")
+- Coverage target work — [#1159](https://github.com/devpool-directory/devpool-directory/pull/1159 "devpool-directory #1159")
+
+

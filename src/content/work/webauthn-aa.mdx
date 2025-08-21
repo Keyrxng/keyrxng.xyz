@@ -1,0 +1,95 @@
+---
+title: "WebAuthn Account Abstraction"
+clientOrProject: "Ubiquity"
+role: "Product Engineer"
+year: "2024"
+featured: true
+summary: "Passkeys + deterministic EOA for seamless onboarding and reliable recovery."
+problem: "Onboarding friction and recovery anxiety for non-crypto natives."
+constraints: ["No seed phrases", "Low ceremony", "Recoverable"]
+approach: "Authenticate with WebAuthn; derive deterministic EOA with strong entropy; deploy smart account when needed; provide recovery path."
+tech: ["WebAuthn", "Account Kit", "TypeScript"]
+wins: ["Seamless passkey sign-in", "Deterministic recovery without mnemonics", "Lower onboarding friction"]
+outcomes:
+  - metric: "auth flow duration"
+    value: "<5"
+    unit: "s"
+---
+
+### Problem
+Onboarding friction and recovery anxiety for non-crypto natives needed to be eliminated without adding ceremony.
+
+### Approach
+1. Use WebAuthn to create a passkey at signup
+2. Derive a deterministic EOA from passkey + session + metadata + salt
+3. Interact through a smart account; sponsor gas selectively
+4. Regenerate the EOA for recovery using the same inputs
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    User[User] --> OAuth[GitHub OAuth]
+    OAuth --> Session[Supabase Session]
+    Session --> Challenge[WebAuthn Challenge]
+    Challenge --> Credential[Credential Creation]
+    Credential --> Entropy[Multi-Source Entropy Pool]
+    Entropy --> Mnemonic[12-Word Mnemonic]
+    Mnemonic --> Key[Private Key Derivation]
+    Key --> EOA[EOA Creation]
+    EOA --> SAFE[SAFE Association]
+    SAFE --> Tx[Sponsored Transaction Execution]
+  `}
+/>
+
+### Outcome
+- Seamless sign-in with passkeys
+- Deterministic recovery without exposing mnemonics to the user
+
+### Constraints
+- No seed phrases; recovery must be deterministic from stable inputs
+- Credentials scoped per origin; require careful domain and storage design
+- Sub-5s authentication target to avoid perceived friction
+
+### Design choices
+- Combine WebAuthn credential data, OAuth metadata, and organizational salts for multi-source entropy
+- Derive a deterministic private key/mnemonic client-side; never expose private keys; interact via smart accounts
+- Sponsor gas or deploy-on-demand; keep blockchain concepts off-stage for users
+
+### Proof
+Code excerpt — Deterministic entropy and salt construction
+
+```ts
+const authEntropies = [
+  `${displayName}-${id.toString()}-${name}`,
+  `${userOauth.id}-${userOauth.ca}-${userOauth.iid}`,
+  `${cred.id}-${cred.type}-${cred.rawId}`,
+  orgSaltWords.join("-"),
+];
+const userSalt = authEntropies.join("-");
+```
+
+Code excerpt — Credential creation boundary (browser)
+
+```ts
+export async function createCredential(user: User): Promise<Credential | null> {
+  const publicKey = createCredentialOptions(createCredentialUser(user.displayName, user.name, String(user.id)));
+  if (typeof navigator === "undefined") return null;
+  try {
+    return (await navigator.credentials.create({ publicKey })) as Credential;
+  } catch (err) {
+    return null;
+  }
+}
+```
+
+Demo evidence — 5s auth flow (passkey + OAuth) and SAFE integration (see references)
+
+### References
+- Repo: [ubiquity/webauthn-evm-signing-key](https://github.com/ubiquity/webauthn-evm-signing-key "ubiquity/webauthn-evm-signing-key")
+- Package: [@keyrxng/webauthn-evm-signer](https://www.npmjs.com/package/@keyrxng/webauthn-evm-signer "@keyrxng/webauthn-evm-signer")
+- SAFE UI integration PRs: [#1](https://github.com/ubiquity/safe.ubq.fi/pull/1 "safe.ubq.fi #1"), [#2](https://github.com/ubiquity/safe.ubq.fi/pull/2 "safe.ubq.fi #2")
+
+

@@ -1,0 +1,201 @@
+---
+title: "Anvil Custom RPC Methods UI"
+clientOrProject: "Ubiquity Dollar"
+role: "Engineer (First OSS Contribution)"
+year: "2023"
+summary: "First open source contribution: exposed 33+ Anvil custom RPC methods in a safe, configurable UI to speed blockchain test setup. Led to core team position and 2-year tenure."
+constraints: [
+  "Hide in production builds (prevent accidental production use)",
+  "Monorepo (contracts + dapp) conventions with existing build processes", 
+  "Use Ethers.js (not Viem despite performance benefits)",
+  "Kebab-case workflows; no hardhat dependencies; Lavamoat compliance",
+  "Initial scope: 8 methods in <1 week; budget $100 → $400 with expansion"
+]
+approach: "Config-driven architecture with `method-configs.ts` as single source of truth; type-safe parameter conversion; selective file downloads for large payloads; organized by chain/user/utility categories; robust error handling; production safety guards."
+tech: ["React", "TypeScript", "Next.js", "Ethers.js", "Foundry/Anvil", "JSON-RPC"]
+wins: [
+  "4× method coverage expansion (8 → 33+ methods)",
+  "Eliminated CLI dependency for PR testing",
+  "Production-safe implementation with dev-only visibility",
+  "Foundation for 2-year OSS contribution trajectory"
+]
+outcomes:
+  - metric: "methods supported"
+    value: "33+"
+    unit: "RPC endpoints"
+  - metric: "review cycle"
+    value: "3"
+    unit: "days"
+  - metric: "scope expansion"
+    value: "4×"
+    unit: "original requirements"
+---
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### Problem
+When developers wanted to test PRs in the Ubiquity Dollar DApp at https://uad.ubq.fi/, they lacked the ability to update blockchain state for testing purposes. Essential debugging operations like account impersonation, balance modification, state dumps, and mempool manipulation required CLI access to Anvil (Foundry's local node), creating significant friction during PR reviews and testing workflows.
+
+### Approach
+- Build a browser-based UI exposing Anvil's 33+ custom RPC methods with production safety guards
+- Implement config-driven architecture where `method-configs.ts` serves as single source of truth
+- Type-safe parameter conversion from form inputs to blockchain-specific types
+- Organized method categorization (chain/user/utility) for intuitive developer experience
+- Selective file downloads for large payload methods (state dumps, snapshots)
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    User[User] --> DAppUI[DApp UI]
+    DAppUI --> CustomRPCButton[Custom RPC Button]
+    CustomRPCButton --> MethodSelection[Method Selection]
+    MethodSelection --> ParameterInput[Parameter Input]
+    ParameterInput --> RPCCall[RPC Call]
+    RPCCall --> AnvilNode[Anvil Node]
+    AnvilNode --> StateModification[State Modification]
+    StateModification --> ResponseDownload[Response or Download]
+  `}
+/>
+
+### Implementation showcase
+
+**Closed state** — Debug panel accessible via footer button
+![Anvil RPC UI Closed](https://github.com/ubiquity/ubiquity-dollar/assets/106303466/31b746b6-4696-4e10-96ea-8b2f65e07734)
+
+**Open state** — Method selection with organized categories and parameter inputs
+![Anvil RPC UI Open](https://github.com/ubiquity/ubiquity-dollar/assets/106303466/aeee1060-3fd9-4e60-848f-32798993669d)
+
+**Active debugging** — Browser console showing transaction hash alongside Anvil node receiving RPC calls
+![Anvil RPC UI Active](https://github.com/ubiquity/ubiquity-dollar/assets/106303466/fca0aa86-ad68-438f-897a-a4a49e16f2e6)
+
+### Outcome
+- **Method expansion**: Delivered 33+ methods vs. original requirement of 8 (4× scope increase)
+- **Enhanced developer productivity**: Eliminated CLI dependency for blockchain testing workflows  
+- **Production-safe deployment**: Hidden button implementation prevents accidental use in live environment
+- **Successful onboarding**: First contribution that established foundation for 2-year OSS trajectory at Ubiquity
+- **Budget success**: Expanded from $100 to $400 budget based on delivered value and scope extension
+
+### Constraints
+- Development-only visibility (hidden in production builds via environment guards)
+- Monorepo compliance with existing dapp structure and linting conventions
+- Ethers.js integration (Viem recommendation declined by maintainers)
+- Zero external dependencies beyond existing stack
+
+### Design choices
+- **Config-driven architecture**: Single `method-configs.ts` file defines all available methods, parameters, and UI behavior
+- **Type-safe parameter handling**: String form inputs converted to appropriate blockchain types (BigInt, hex, boolean)
+- **Selective response handling**: Large payloads trigger file downloads; small responses display inline
+- **Production safety**: Environment-based feature flags prevent accidental production exposure
+- **Categorized organization**: Methods grouped by utility (chain operations, user actions, debugging utilities)
+
+### Proof
+Code excerpt — JSON-RPC call implementation with error handling
+
+```ts
+const handleFetch = async (method: string, params: unknown[]) => {
+  try {
+    const response = await fetch("http://localhost:8545", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        jsonrpc: "2.0",
+        id: 1,
+        method,
+        params
+      }),
+    });
+    
+    const result = await response.json();
+    
+    if (result.error) {
+      throw new Error(`RPC Error: ${result.error.message}`);
+    }
+    
+    return result;
+  } catch (error) {
+    console.error(`Failed to call ${method}:`, error);
+    throw error;
+  }
+};
+```
+
+Code excerpt — type-safe parameter conversion
+
+```ts
+function convertToArgType(arg: string, type: string): unknown {
+  // Trim input to handle whitespace
+  const trimmedArg = arg.trim();
+  
+  switch (type) {
+    case "bigint":
+      return BigInt(trimmedArg);
+    case "number":
+      return Number(trimmedArg);
+    case "boolean":
+      return Boolean(trimmedArg);
+    case "string":
+      return String(trimmedArg);
+    default:
+      return trimmedArg;
+  }
+}
+
+// Usage in form handler
+const typedArgs = method.params.map((param, index) => 
+  convertToArgType(methodArgs[param.name], param.type)
+);
+```
+
+Code excerpt — config-driven method definitions
+
+```ts
+export const methodConfigs = [
+  {
+    name: "Impersonate Account",
+    methodName: "anvil_impersonateAccount",
+    description: "Start impersonating an account for subsequent calls",
+    params: [{ name: "address", type: "string" }],
+    type: "user"
+  },
+  {
+    name: "Set Balance",
+    methodName: "anvil_setBalance", 
+    description: "Set the balance of an account in wei",
+    params: [
+      { name: "address", type: "string" },
+      { name: "balance", type: "bigint" }
+    ],
+    type: "user"
+  },
+  {
+    name: "Get Block Number",
+    methodName: "eth_blockNumber",
+    description: "Returns the current block number",
+    params: [],
+    download: true,
+    type: "utility"
+  }
+  // ... 30+ additional methods
+];
+```
+
+Code excerpt — production safety guard
+
+```ts
+// Component only renders in development
+if (process.env.NODE_ENV === 'production') {
+  return null;
+}
+
+return (
+  <div className="anvil-debug-panel">
+    {/* UI implementation */}
+  </div>
+);
+```
+
+### References
+- Issue — [#528 - UI for custom RPC methods](https://github.com/ubiquity/ubiquity-dollar/issues/528 "UI for custom RPC methods")
+- PR — [#766 - Anvil custom methods](https://github.com/ubiquity/ubiquity-dollar/pull/766 "Anvil custom methods")
+

@@ -1,0 +1,163 @@
+---
+title: "AI Slack Agent for Iffy (Gumroad)"
+clientOrProject: "Iffy (Gumroad)"
+role: "Full-stack Engineer"
+year: "2024"
+summary: "Proposed multi-workspace Slack agent with OAuth, encrypted tokens, email-based identity resolution, and tool-gated admin actions (PR not merged due to style differences)."
+constraints: [
+  "Multi-tenant Slack installs (per-workspace tokens/webhooks)",
+  "Encrypt OAuth tokens at rest",
+  "Clerk auth + email matching for identity",
+  "Tool execution must be admin-gated",
+  "Non-blocking, scalable message handling"
+]
+approach: "OAuth flow with scoped permissions; encrypted token storage; SlackContext encapsulation for identity and auth; email-based user matching via Clerk; tool-gated actions; Inngest for async processing; documented setup and troubleshooting."
+tech: ["TypeScript", "Next.js", "Slack Web API", "Drizzle ORM", "Inngest", "Clerk", "@47ng/cloak"]
+wins: [
+  "Moderation actions directly in Slack",
+  "Secure multi-workspace install model",
+  "Clear tool boundaries and auditability",
+  "Scales under message load via async events"
+]
+outcomes:
+  - metric: "workspaces supported"
+    value: "multi"
+    unit: "tenant"
+---
+
+### Problem
+Moderators had to context-switch between Slack and the app to suspend/unsuspend users or fetch user info. The system needed a Slack-native agent that could act securely across multiple workspaces.
+
+### Approach
+- OAuth v2 app install with scopes: `incoming-webhook`, `chat:write`, `channels:read`, `users:read`, `users:read.email`
+- Encrypt and store per-workspace tokens; route webhooks by workspace (multi-tenant)
+- `SlackContext` for identity resolution and admin checks
+- Email-based matching between Slack profile and Clerk organization
+- Tool-gated actions: suspend/unsuspend, fetch info; AI SDK for NL responses
+- Inngest for asynchronous event processing and tool execution
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    Client[Client] --> SlackOAuth[Slack OAuth]
+    SlackOAuth --> DashboardSettings[Dashboard Settings]
+    DashboardSettings --> WebhookStorage[Webhook Storage]
+    WebhookStorage --> InngestEvent[Inngest Event]
+    InngestEvent --> SlackContext[SlackContext]
+    SlackContext --> UserVerification[User Verification]
+    UserVerification --> ToolAuthorization[Tool Authorization]
+    ToolAuthorization --> DatabaseAction[Database Action]
+    DatabaseAction --> SlackResponse[Slack Response]
+  `}
+/>
+
+### Status and review feedback
+- **Status**: Implemented and proposed via PR; **not merged**.
+- **Reason**: Code style divergence rather than functionality.
+
+> “Took a look, I don't think the code is super inline with the rest of the codebase. Seems more like a Java approach to writing code than TypeScript. The Helper repo / PR around agents, and the Flexile one too, I think has a good approach. Would recommend basing it off of those.” — Sahil Lavingia (CEO)
+
+The implementation favored a class-based context object and TypeScript generics to map event payloads directly into handler context. The existing codebase trends more functional and uses inner method type narrowing checks.
+
+### Outcome
+- Working prototype demonstrated moderation from Slack without app context switches
+- Encrypted token storage and verified Slack signatures
+- Non-blocking, scalable processing with clear audit trails
+- Presented as a PR for review; not merged due to style alignment concerns
+
+### Constraints
+- Must not block request cycle; long-running tools dispatched asynchronously
+- Admin actions require both Slack admin status and completed app OAuth
+- Database migrations must not disrupt existing data
+
+### Design choices
+- Context object encapsulates Slack client, org, and auth checks
+- Tokens encrypted with `@47ng/cloak`; secrets never logged
+- Email match via Clerk for least-surprise identity mapping
+- Documentation first: setup, scopes, and troubleshooting
+- Type-safe event handling via generics to avoid repeated `if ("bar" in foo)` checks and long switch statements
+
+Code excerpt — type-safe payload mapping
+
+```ts
+export type SupportedSlackEvents = SlackEvent["type"] | "url_verification";
+
+type SlackEventWithUrlVerification = Pick<SlackEvent, "type"> & {
+  challenge: string;
+  token: string;
+  type: "url_verification";
+};
+
+export type SlackEventPayload<T extends SupportedSlackEvents> = {
+  type: T;
+  teamId: string;
+  appId: string;
+  event: T extends "url_verification"
+    ? SlackEventWithUrlVerification
+    : Omit<Extract<SlackEvent, { type: T }>, "type">;
+};
+
+export type SlackEventCallbacks<T extends SupportedSlackEvents> = {
+  [K in T]: Array<(ctx: SlackContext<K>) => Promise<NextResponse>>;
+};
+```
+
+### Proof
+Code excerpt — SlackContext identity resolution
+
+```ts
+// app/api/v1/slack/agent/context.ts
+async getIffyUserFromSlackId(slackUserId: string) {
+  const userSlackInfo = await this.client.users.info({ user: slackUserId });
+  const organization = await db.query.organizations.findFirst({
+    where: eq(schema.organizations.clerkOrganizationId, this.inbox.clerkOrganizationId),
+  });
+
+  const userEmail = userSlackInfo.user?.profile?.email;
+  if (!userEmail || !organization) {
+    return { clerkUserId: null, slackUserId };
+  }
+
+  const { data: [clerkAuthedUser] } = await (await clerkClient()).users.getUserList({
+    emailAddress: [userEmail],
+    limit: 1,
+  });
+  // ... use clerkAuthedUser for permission checks
+}
+```
+
+Code excerpt — OAuth callback (scopes + token exchange)
+
+```ts
+// app/api/v1/slack/oauth/callback/route.ts
+export async function POST(request: NextRequest) {
+  const { code, state } = await request.json();
+  const { clerkOrganizationId } = JSON.parse(Buffer.from(state, 'base64').toString('utf-8'));
+  const oauthResponse = await fetch('https://slack.com/api/oauth.v2.access', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
+    body: new URLSearchParams({
+      client_id: env.NEXT_PUBLIC_SLACK_CLIENT_ID,
+      client_secret: env.SLACK_CLIENT_SECRET,
+      code,
+    }).toString(),
+  });
+  // ... persist encrypted tokens bound to clerkOrganizationId
+}
+```
+
+QA/PR evidence — integration PR (not merged)
+
+- Demo Video:
+  <video controls width="100%" style="max-width: 800px; margin: 1rem 0;">
+    <source src="https://github.com/user-attachments/assets/81ac7c56-8899-4d62-a2db-ee3da2a12e0d" type="video/mp4" />
+    Your browser does not support the video tag.
+  </video>
+- ![image](https://github.com/user-attachments/assets/8caf0c4f-b05a-456d-8fba-cf3233d777c5)
+
+### References
+- Issue — [#117 - Iffy agent](https://github.com/antiwork/iffy/issues/117 "Iffy agent")
+- PR — [#120 - Slack integration](https://github.com/antiwork/iffy/pull/120 "Slack integration")

@@ -1,0 +1,98 @@
+---
+title: "Case study: Telegram micro-kernel integration (Workers + GitHub Actions)"
+clientOrProject: "Ubiquity OS"
+role: "Engineer"
+year: "2024"
+summary: "Case study: Bridged a kernel with Telegram using Workers for Bot API and GitHub Actions for MTProto—auditable flows, low-friction UX, and clear boundaries."
+constraints: ["Telegram Bot API limits", "Manual SMS auth", "Worker runtime constraints"]
+approach: "Dual-path architecture: a bot handler in Workers for Bot API and workflow-driven MTProto tasks in GitHub Actions; persisted auth via Supabase."
+tech: ["Cloudflare Workers", "Hono", "GitHub Actions", "Supabase"]
+wins: ["Auditable collaboration flows", "Low-friction UX for issue-based workrooms", "Modular plugin foundation"]
+outcomes:
+  - metric: "chat lifecycle"
+    value: "create/close/reopen"
+    unit: "via CI"
+---
+
+### Problem
+Collaboration happened in DMs (not auditable or rewardable). We needed kernel↔Telegram integration that could create, close, and reopen workrooms tied to issues—reliably and with minimal friction.
+
+### Constraints
+- Telegram Bot API group creation limits
+- Manual SMS verification in the auth flow
+- MTProto features not viable directly in Worker runtime
+- Cloudflare Workers environment incompatible with Node MTProto libs
+- Bot API vs MTProto differences: auth, rate limits, capabilities
+- Reviewer setup complexity (BotFather config, test accounts, storage)
+
+### Approach
+1) Bot handler in Cloudflare Workers (Hono) for fast, reliable Bot API.
+2) MTProto features via self-dispatching GitHub Actions workflows.
+3) Supabase session storage to persist authentication state.
+
+import Mermaid from "../../components/Mermaid.astro";
+
+### System diagram
+
+<Mermaid
+  chart={`flowchart LR
+    User[User Input] --> Worker[Telegram Bot Worker]
+    Worker --> Classify[Event Classification]
+    Classify --> Plugin[GitHub Plugin Action]
+    Plugin --> MTProto[MTProto API workroom creation]
+    MTProto --> Storage[Supabase/GitHub Storage]
+    Storage --> Response[Response to User]
+    Response --> Dispatch[Workflow Self-Dispatch]
+    Dispatch --> Repo[Repository Actions]
+  `}
+/>
+
+### Outcome
+- Auditable, low-friction workrooms tied to issues
+- Clear separation of fast bot actions vs. privileged MTProto flows
+- Foundation for future kernel plugins (modular, testable)
+
+ 
+
+### Design choices
+- Worker (Hono/grammy) for Bot API; self-dispatched GitHub Actions workflow for MTProto tasks
+- Persist Telegram session state via Supabase (legacy) then GitHub storage
+- Command set for workrooms and repository interactions; AI-assisted task creation where appropriate
+
+### Proof
+Code excerpt — Workroom creation via MTProto (worker → action boundary)
+
+```ts
+export async function createChat(context: Context) {
+  const { payload, adapters: { storage } } = context;
+  const chatName = `@${payload.repository.full_name}#${payload.issue.number}`;
+  const chat = await mtproto.createSupergroup({ title: chatName, description: `Task: ${payload.issue.title}` });
+  await storage.handleChat({ action: ChatAction.CREATE, chatId: chat.id, repositoryId: payload.repository.id, issueNumber: payload.issue.number });
+  return chat;
+}
+```
+
+Workflow excerpt — Self-dispatched action executing kernel step
+
+```yaml
+on:
+  repository_dispatch:
+    types: [create-chat, close-chat, reopen-chat]
+jobs:
+  compute:
+    runs-on: ubuntu-latest
+    steps:
+      - name: execute directive
+        run: npx tsx ./src/workflow-entry.ts
+```
+
+### References
+- Issue: [#1 - V2 spec](https://github.com/ubiquity-os-marketplace/ubiquity-os-kernel-telegram/issues/1 "V2 spec")
+- PR: [#2 - V2 init](https://github.com/ubiquity-os-marketplace/ubiquity-os-kernel-telegram/pull/2 "V2 init")
+- Issue: [#32 - /newtask spec](https://github.com/ubiquity-os-marketplace/ubiquity-os-kernel-telegram/issues/32 "/newtask spec")
+- PR: [#31 - /newtask](https://github.com/ubiquity-os-marketplace/ubiquity-os-kernel-telegram/pull/31 "/newtask")
+- Issue: [#34 - /ask spec](https://github.com/ubiquity-os-marketplace/ubiquity-os-kernel-telegram/issues/34 "/ask spec")
+- PR: [#35 - /ask](https://github.com/ubiquity-os-marketplace/ubiquity-os-kernel-telegram/pull/35 "/ask")
+- PR: [#48 - Hybrid plugin workflow](https://github.com/ubiquity-os-marketplace/ubiquity-os-kernel-telegram/pull/48 "Hybrid plugin workflow")
+
+
