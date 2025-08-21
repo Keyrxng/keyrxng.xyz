@@ -1,0 +1,116 @@
+---
+const { code, chart } = Astro.props;
+---
+<style>
+  /* Mermaid wrapper */
+  .mermaid {
+    --bg: #101014;
+    --border: #262b3a;
+    --accent: #7c7cfa;
+    --accent-fade: #7c7cfa33;
+    --text: #f5f7fa;
+    background: linear-gradient(145deg,#0c0d12,#151823 65%  );
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    padding: 1.25rem 1.5rem 1.4rem;
+    margin: 0.75rem 0 2.25rem;
+    color: var(--text);
+  font-size: 1.05rem; /* Slightly larger base for readability */
+    overflow-x: auto;
+    box-shadow: 0 3px 18px -4px #0009, 0 0 0 1px #ffffff05 inset;
+    position: relative;
+  }
+  .mermaid:before {
+    content: 'diagram';
+    position: absolute;
+    top: 6px;
+    right: 10px;
+    font-size: 10px;
+    letter-spacing: .08em;
+    text-transform: uppercase;
+    color: #9ea6b833;
+    font-weight: 600;
+  }
+  .mermaid svg { width: 100%; height: auto; }
+  /* Prevent Mermaid from shrinking diagram to container width; allow horizontal scroll */
+  .mermaid svg { max-width: none !important; }
+  .mermaid svg .node rect,
+  .mermaid svg .node polygon,
+  .mermaid svg .node ellipse { filter: drop-shadow(0 2px 4px #0008); }
+  .mermaid svg .edgePaths path { filter: drop-shadow(0 0 4px #7c7cfa55); }
+  .mermaid svg .cluster rect { stroke-dasharray: 4 4; }
+  /* Scrollbar subtle styling */
+  .mermaid::-webkit-scrollbar { height: 10px; }
+  .mermaid::-webkit-scrollbar-track { background: #0c0d12; }
+  .mermaid::-webkit-scrollbar-thumb { background: #2c3142; border-radius: 40px; }
+  .mermaid::-webkit-scrollbar-thumb:hover { background: #3a4155; }
+</style>
+<div>
+  <pre class="mermaid">{(chart ?? code) ? (chart ?? code).trim() : `graph TD\nA[Astro] -->|uses| B(Mermaid)\nB --> C{Markdown/MDX}`}</pre>
+</div>
+<script type="module" is:inline>
+  import mermaid from 'https://cdn.jsdelivr.net/npm/mermaid@11/dist/mermaid.esm.min.mjs';
+  const DESIRED_FONT_PX = 22;
+  mermaid.initialize({
+    startOnLoad: true,
+    theme: 'base',
+    securityLevel: 'loose',
+    flowchart: {
+      useMaxWidth: false,
+      htmlLabels: false
+    },
+    themeVariables: {
+      fontFamily: 'Inter, system-ui, sans-serif',
+      fontSize: `${DESIRED_FONT_PX}px`,
+      primaryColor: '#242734',
+      primaryTextColor: '#f5f7fa',
+      primaryBorderColor: '#7c7cfa',
+      secondaryColor: '#1d2029',
+      tertiaryColor: '#34384a',
+      lineColor: '#7c7cfa',
+      edgeLabelBackground:'#1d2029',
+      clusterBkg: '#1d2029',
+      clusterBorder: '#444b63'
+    }
+  });
+  // Inject fine‑grained post-render CSS for things not handled by themeVariables
+  function injectMermaidStyles() {
+    const svg = document.querySelector('.mermaid svg');
+    if (!svg || svg.querySelector('style[data-custom]')) return;
+    const style = document.createElement('style');
+    style.dataset.custom = 'true';
+    style.textContent = `
+      .mermaid svg text, .mermaid svg .label, .mermaid svg .edgeLabel { 
+        fill: #f5f7fa !important; font-weight: 560; letter-spacing: .25px; font-size:${DESIRED_FONT_PX}px !important; 
+      }
+      .mermaid .node rect, .mermaid .node polygon, .mermaid .node ellipse { 
+        stroke-width: 2px; rx: 8; ry: 8; 
+      }
+      .mermaid .node:hover rect, .mermaid .node:hover polygon, .mermaid .node:hover ellipse { 
+        stroke: #a7a7ff !important; box-shadow: 0 0 0 2px #a7a7ff55; 
+      }
+      .mermaid .edgePaths path { stroke-width: 2.2px; }
+      .mermaid .edgePaths path, .mermaid .marker { stroke: #7c7cfa; }
+      .mermaid .edgeLabel rect { fill: #1d2029aa; stroke: #7c7cfa44; }
+      .mermaid .cluster rect { fill: #1d2029; stroke: #444b63; }
+      .mermaid .cluster text { fill: #cdd4e0; font-weight: 600; }
+      /* Improve wrapping */
+      .mermaid foreignObject span, .mermaid .label, .mermaid .nodeLabel { 
+        white-space: pre-wrap; word-break: break-word; line-height: 1.32; font-size:${DESIRED_FONT_PX}px !important; 
+      }
+    `;
+    svg.appendChild(style);
+    // Remove auto-scaling width so natural size (with bigger fonts) can overflow horizontally
+    svg.style.maxWidth = 'none';
+    // Enforce font size at attribute level (Mermaid sometimes sets manually)
+    svg.querySelectorAll('text').forEach(t => {
+      t.setAttribute('font-size', `${DESIRED_FONT_PX}`);
+      t.style.fontSize = `${DESIRED_FONT_PX}px`;
+    });
+  }
+  // Slight delay to allow initial render; also observe future diagrams if rerendered.
+  const ready = () => setTimeout(injectMermaidStyles, 120);
+  if (document.readyState !== 'loading') ready(); else document.addEventListener('DOMContentLoaded', ready);
+  const obs = new MutationObserver(injectMermaidStyles);
+  obs.observe(document.documentElement, { subtree: true, childList: true });
+</script>

@@ -1,0 +1,112 @@
+---
+
+import downloadsData from '../data/rpc-handler/npmjs-downloads.json';
+
+export interface Props {
+  width?: number;
+  height?: number;
+}
+
+const { width = 280, height = 88 } = Astro.props;
+const padLeft = 28;
+const padRight = width - 6;
+const padTop = 10;
+const padBottom = height - 24;
+
+const values = downloadsData.map(d => d.downloads);
+const min = Math.min(...values);
+const max = Math.max(...values);
+
+const yScale = (val: number): number => {
+  return padBottom - ((val - min) / (max - min)) * (padBottom - padTop);
+};
+const xStep = (padRight - padLeft) / (downloadsData.length - 1);
+const xScale = (i: number): number => padLeft + i * xStep;
+
+const points = downloadsData.map((d, i) => [xScale(i), yScale(d.downloads)]);
+const path = points.map(([x, y], i) => (i === 0 ? `M ${x} ${y}` : `L ${x} ${y}`)).join(' ');
+const areaPath = `${path} L ${padRight} ${padBottom} L ${padLeft} ${padBottom} Z`;
+
+const ticks = [
+  { value: min, y: yScale(min) },
+  { value: Math.round((min + max) / 2), y: yScale(Math.round((min + max) / 2)) },
+  { value: max, y: yScale(max) }
+];
+---
+
+<style>
+  .downloads-chart-svg {
+    display: block;
+    width: 100%;
+    height: auto;
+    margin: 0 auto;
+    /* Remove fixed max-width so parent controls width */
+  }
+  .downloads-chart-svg text {
+    font-size: 9px !important;
+    font-weight: normal !important;
+    font-family: inherit !important;
+    paint-order: stroke;
+  }
+</style>
+<svg
+  class="downloads-chart-svg"
+  role="img"
+  aria-labelledby="chart-title chart-desc"
+  width={width}
+  height={height}
+  viewBox={`0 0 ${width} ${height}`}
+  data-pad-top={padTop}
+  data-inner-h={padBottom - padTop}
+>
+  <title id="chart-title">@ubiquity-dao/rpc-handler — weekly downloads</title>
+  <desc id="chart-desc">Weekly npm downloads chart</desc>
+  <g>
+    {ticks.map((tick) => (
+      <g>
+        <line
+          x1={padLeft}
+          y1={tick.y}
+          x2={padRight}
+          y2={tick.y}
+          stroke="color-mix(in oklab, var(--color-fg) 12%, transparent)"
+          stroke-width="1"
+        />
+        <text
+          x={padLeft - 6}
+          y={tick.y + 4}
+          text-anchor="end"
+          font-size="9px"
+          fill="var(--color-muted)"
+          style="paint-order:stroke; font-size:9px;"
+        >{tick.value}</text>
+      </g>
+    ))}
+  </g>
+  <path
+    d={areaPath}
+    fill="color-mix(in oklab, var(--color-fg) 10%, transparent)"
+  />
+  <path
+    d={path}
+    fill="none"
+    stroke="var(--color-fg)"
+    stroke-width="1.5"
+  />
+  <text
+    x={padLeft}
+    y={height - 6}
+    text-anchor="start"
+    font-size="9px"
+    fill="var(--color-muted)"
+    style="paint-order:stroke; font-size:9px;"
+  >{downloadsData[0].label}</text>
+  <text
+    x={padRight}
+    y={height - 6}
+    text-anchor="end"
+    font-size="9px"
+    fill="var(--color-muted)"
+    style="paint-order:stroke; font-size:9px;"
+  >{downloadsData[downloadsData.length - 1].label}</text>
+</svg>
