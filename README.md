@@ -1,43 +1,134 @@
-# Astro Starter Kit: Minimal
+<div align="center">
 
-```sh
-npm create astro@latest -- --template minimal
+# keyrxng.xyz
+
+Personal site & writing hub. Built with Astro (first-time use — really enjoying the DX) plus a lightweight content & SEO tooling layer.
+
+</div>
+
+## Overview
+
+Core goals:
+
+- Fast, low-JS delivery (Astro islands only where needed)
+- Clear content model for writing, work history, competencies & technologies
+- Strong defaults for metadata, Open Graph, RSS & sitemap
+- Authoring ergonomics: MDX, diagrams, glossary, semantic keyword insight
+- Repeatable SEO & readability audit to keep quality from drifting
+
+## Tech Stack
+
+- Astro 5
+- MDX (`@astrojs/mdx`)
+- Sitemap (`@astrojs/sitemap`)
+- RSS feed (`src/pages/rss.xml.js`)
+- Custom OG image generation (Satori + Resvg)
+- Mermaid diagrams component (`Mermaid.astro`)
+- TypeScript everywhere (strict content typing via `src/content/config.ts`)
+- Vitest for utility tests
+
+## Features
+
+- Content collections: writing, work, competencies, technologies (typed frontmatter)
+- Dynamic per-post pages via `[slug].astro` for writing & work
+- Glossary MDX page (`_glossary.mdx`) for shared terminology
+- Open Graph & social card generation (Satori + Resvg)
+- Auto sitemap + RSS
+- Mermaid diagram rendering with custom theming (bigger font, dark theme, overflow-safe)
+- SEO audit script with TF‑IDF & readability metrics (`scripts/seo-audit.ts`)
+- Keyword extraction & duplicate title detection
+- Styled OG & diagram components without heavyweight CSS frameworks (hand-authored design tokens in `public/*.css`)
+
+## Performance & DX Notes
+
+- Favor server-rendered + static output; hydrate only where interaction is essential
+- Keep third-party scripts minimal (currently only Mermaid when diagrams are used)
+- Design tokens in `public/tokens.css` for consistent spacing/color/typography
+- Custom fonts: Noto Sans & Roboto variable fonts
+
+## Content Model
+
+Each collection enforces frontmatter fields, enabling consistent metadata & structured listings.
+
+Patterns:
+
+- Articles: title, summary, publishedAt, readingTime
+- Work items: problem framing, impact narrative, tech stack
+- Competencies / technologies: JSON or MDX descriptors consumed for taxonomy & filtering
+- Glossary: curated shared vocabulary to reduce repetition & onboard readers faster
+
+## SEO & Quality Tooling
+
+`scripts/seo-audit.ts` crawls source content (Astro, MD, MDX, JSON):
+
+- Extracts title, description, headings (H1–H3)
+- Calculates word & sentence counts, Flesch Reading Ease, FK Grade
+- Collects internal / external links; flags images missing alt
+- Performs tokenization + stemming + stopword filtering
+- Builds unigrams, bigrams, trigrams with weighted TF‑IDF (frontmatter & headings boosted)
+- Detects: missing title/description/H1, duplicate titles, suboptimal length
+- Emits JSON + companion markdown summary (`seo-report.json` / `.md`)
+
+Run after a production build to audit what will actually ship:
+
+```
+pnpm build
+pnpm seo:audit   # writes seo-report.json + md
 ```
 
-> 🧑‍🚀 **Seasoned astronaut?** Delete this file. Have fun!
+Stdout variant:
 
-## 🚀 Project Structure
-
-Inside of your Astro project, you'll see the following folders and files:
-
-```text
-/
-├── public/
-├── src/
-│   └── pages/
-│       └── index.astro
-└── package.json
+```
+pnpm seo:audit:stdout
 ```
 
-Astro looks for `.astro` or `.md` files in the `src/pages/` directory. Each page is exposed as a route based on its file name.
+## Development
 
-There's nothing special about `src/components/`, but that's where we like to put any Astro/React/Vue/Svelte/Preact components.
+Install & run locally:
 
-Any static assets, like images, can be placed in the `public/` directory.
+```
+pnpm install   # or npm / yarn
+pnpm dev       # http://localhost:4321
+```
 
-## 🧞 Commands
+Build & preview:
 
-All commands are run from the root of the project, from a terminal:
+```
+pnpm build
+pnpm preview
+```
 
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
+Additional scripts:
 
-## 👀 Want to learn more?
+```
+pnpm test             # Vitest (TF‑IDF, normalization utilities)
+pnpm astro check      # Type + Astro diagnostics
+pnpm seo:audit        # Generate SEO / keyword report (needs dist or specify --root)
+```
 
-Feel free to check [our documentation](https://docs.astro.build) or jump into our [Discord server](https://astro.build/chat).
+## Mermaid Diagrams
+
+Use the `<Mermaid>` component in MDX to embed architecture / flow diagrams. The component loads Mermaid ESM client-side, applies a custom dark theme, enlarges typography for legibility, and preserves natural width (horizontal scroll when needed).
+
+Example MDX snippet:
+
+```mdx
+<Mermaid chart={`graph TD\nA[Request] --> B[Astro]\nB --> C{Island}`}/>
+```
+
+## Open Graph Images
+
+OG images are generated via Satori + Resvg (see integration code) to ensure consistent branding without hand-authoring each card. Titles & descriptors feed into the template.
+
+## License / Content
+
+Code: MIT. Written content & images: All rights reserved unless explicitly stated.
+
+## Credits
+
+Built with Astro — first experience and a positive one. Thanks to the Astro team & ecosystem.
+
+---
+
+Questions or suggestions? PR or email: keyrxng@proton.me
+
