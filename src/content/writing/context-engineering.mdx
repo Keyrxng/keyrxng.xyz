@@ -1,0 +1,260 @@
+---
+title: "Context Engineering: Sculpting Attention Surfaces for Real LLM Work"
+publishedAt: "2025-08-20"
+date: "2025-08-21"
+summary: "A practitioner's field guide to moving beyond prompt tinkering—architecting token budgets, retrieval granularity, temporal pruning, and adaptive memory so large language models stay on-mission at scale."
+tags: ["LLM", "Context Engineering", "RAG", "Embeddings", "Systems", "Prompt Engineering"]
+readingTime: "12 min"
+relatedWorkSlug: command-ask
+---
+
+> Series connective tissue: builds on the GitHub thread bot story ("Bringing an AI coworker onto GitHub"), the temporal decay work (Ghost series), and the semantic matchmaking observations. Those were *incidents*. This is the *discipline* that unifies them.
+
+## 1. Why context engineering (and why now)
+Prompt engineering will get you surprisingly far: clever system messages, well-placed delimiters, a few curated exemplars. But once you push past tiny, self-contained tasks into:
+- Multi-repository refactors (hundreds of files)
+- Long-running conversational agents (days of history)
+- Dense artifact reasoning (PR threads + diffs + linked issues + ADRs)
+- Multi-pass analytical pipelines (profiling human performance, temporal evolution)
+
+the naive strategy of “just stuff more into the window” plateaus fast. At ~60%+ window occupancy frontier models **lose plot integrity**: factual drift up, structural compliance down, redundancy skyrockets, latency/cost spike. Context engineering is the shift from *wordsmithing a prompt* to *designing the dynamic attention surface*.
+
+**Definition (field-oriented)**: Context engineering is the end-to-end discipline of selecting, compressing, ordering, formatting, gating, and *budgeting* the information + tool affordances an LLM consumes so that reasoning remains bounded, purposeful, and temporally relevant.
+
+## 2. Prompt engineering vs context engineering (concise contrast)
+| Dimension | Prompt engineering | Context engineering |
+|----------|--------------------|---------------------|
+| Primary unit | A static (or lightly templated) string | A pipeline / graph assembling evolving slices |
+| Focus | Wording, examples, tone | Selection, omission, compression, structure, temporal weighting |
+| Failure mode | Bad phrasing → weak answer | Uncontrolled entropy → drift, cost blowups, hallucination |
+| Key levers | Few-shot curation, role framing, formatting | Retrieval ranking, granularity, summarization, dedupe, decay, tool plans |
+| Metrics | BLEU-esque adhoc, perceived quality | Token efficiency, answer stability, latency, drift rate, acceptance |
+
+## 3. Core principles (opinionated)
+1. **Subtractive first** — Decide what *never* enters the window before hunting new data.
+2. **Budget early** — Reserve explicit token quotas per segment (context, reasoning, output) *before* retrieval.
+3. **Granularity matches task** — Paragraph vs sentence embeddings vs code symbol slices: choose smallest units that preserve determinism for the target decision.
+4. **Temporal skepticism** — Older artifacts enter only if explicitly revalidated or uniquely relevant (Ghost series rationale).
+5. **Semantic boundaries** — Preserve textual separators; avoid spaghetti concatenation that melts referents.
+6. **Reasoning headroom** — Hard ceiling (e.g., ≤ 55–60% of window) for staged context; never starve the model's latent planning space.
+7. **Composable flows** — Break monolith tasks into phased calls *only if* cross-phase coupling doesn't force full re-ingestion.
+8. **Observability-first** — Log token projections, retrieval scores, truncation events, and hallucination deltas.
+
+## 4. The 60% rule (why saturation degrades quality)
+Empirical threshold (multiple systems, frontier + mid-tier models): once *raw staged context* climbs past ~60% of max tokens:
+- Model begins truncating internal scratch (chain-of-thought invisible) → shallower synthesis
+- Increased reliance on early tokens → recency overshadowing mid-block nuance
+- Higher repetition probability (looped phrasing, duplicate rationale)
+- Rising incidence of **attention anchoring**: over-focusing on the longest or earliest block
+
+> Heuristic: If window_use > 0.6 before the *question* + required scaffolds, force a condensation pass (extractive first, abstractive second only if entropy remains high).
+
+## 5. Granularity strategy & hierarchical condensation (use-case first)
+There is no universally “correct” chunk size. **Granularity is downstream of task shape, retrieval pattern, and longevity of the knowledge surface.** Two contrasting scenarios:
+
+- **Versioned / relatively static docs ("talk to docs")**: sentence-level slices excel—users ask narrow, clause-specific questions; older versions are explicitly replaced so temporal decay may *harm* accuracy if it hides still-valid archived info.
+- **Evolving, unversioned internal knowledge base (process runbooks, ad-hoc decision logs, merger legacy systems)**: paragraph or *report-level condensations* outperform hyper-fine slices; you need consolidated up-to-date guidance for new staff while still allowing drill-down into legacy layers when required.
+
+### The SWE profile example (duplication pressure)
+Suppose 100 engineer performance / activity reports each carry 30+ semi-structured data points (ratings, qualitative notes). That's hundreds maybe thousands of near-duplicate sentences like “Communication: 5/10” or “Demonstrated leadership by unblocking X.” Law of large numbers kicks in:
+1. **Semantic search bias**: cosine similarity over-weights the most repeated phrasing (bland, averaged statements) and under-represents unique, high-signal outliers.
+2. **Model pattern anchoring**: LLM latches onto frequently repeated generic sentences, diluting nuanced signal (rare spikes in leadership, novel incident response behavior).
+3. **Retrieval tradeoff**: returning only the “top 30” sentences loses breadth (&gt;90% of the longitudinal range); returning everything floods the window with redundancy, and you'd have been better skipping the embedding step and one-shotting things.
+
+### Hierarchical condensation pipeline
+Prefer *multi-level rollups* over raw fine granularity:
+```
+Issue / PR / Thread → Micro Report (artifact summary + key metrics)
+Weekly / Sprint Report → Aggregated metrics + exceptional events
+Monthly Report → Trend deltas + anomaly notes
+Quarterly / Yearly Profile → Stable traits, trajectory vectors, distilled narrative
+Final Persona Object → (core_stats, domain_vectors, temporal_trends, anomaly_notes)
+```
+Each level is *token bounded* and references lower layers by stable IDs, enabling drill-down on demand without automatically re-injecting raw historical chatter.
+
+### Granularity heuristic checklist
+- Retrieval question is *surgical* → favor sentence / code symbol slices.
+- Retrieval question is *holistic / evaluative* → favor pre-distilled report chunks.
+- High duplication across artifacts → prioritize clustering + centroid summarization before any direct injection.
+- Very long operational lifespan (multi-year RAG) → invest early in condensation layers; treat raw artifacts as cold storage.
+
+> Principle: Pick the *smallest number of largest trustworthy summaries* that still preserve reversible linkage to underlying detail.
+
+## 6. Retrieval + pruning loop (practical pattern)
+1. **Query expand (optional)**: canonicalize question (strip noise, normalize refs).  
+2. **Coarse retrieve**: paragraph vectors (k=50).  
+3. **Score augment**: semantic_score * time_decay * doc_authority.  
+4. **Dedupe / cluster**: drop near-duplicates (cosine > 0.94).  
+5. **Fine retrieve**: expansion for top m (m≈10).  
+6. **Salience compression**: extract key spans (regex heuristics + embedding centrality).  
+7. **Budget trim**: enforce segment token ceilings.  
+8. **Assemble**: ordered context blocks + explicit separators + metadata headers.  
+9. **Guardrail prompt**: brevity rules, structure contract, DO / DO NOT lists.  
+10. **Answer**.
+
+> Key: *Omission logging*. Store what you *didn't* include and why (rank below threshold, duplicate cluster id). Critical for post-hoc error analysis.
+
+## 7. Formatting as an interface
+Format is a *compression codec* for model attention.
+| Format | Strength | Risk | Use |
+|--------|----------|------|-----|
+| Markdown | Readability, structural cues | Overhead tokens in headers | Mixed code + prose |
+| JSON (strict) | Parseable output enforcement | Higher mitten token cost | Tool invocation planning |
+| XML | Hierarchical clarity | Verbose tags | Nested attribute reasoning |
+| Lightweight tagged blocks | Low overhead | Custom parser needed | Internal pipelines |
+
+**Pattern**: Provide *context blocks* in Markdown (semantic clarity) → require *output schema* in JSON with strict field ordering. Separation reduces drift.
+
+## 8. Boundary preservation
+Failure mode: concatenated multi-issue specs fused into one ambiguous blob → model blends constraints. Mitigation:
+```
+<<< ISSUE_A (id:123 | updated:2025-08-12) >>>
+...spec text...
+<<< /ISSUE_A >>>
+
+<<< ISSUE_B (id:456 | updated:2025-08-18) >>>
+...spec text...
+<<< /ISSUE_B >>>
+```
+Explicit sentinels act as *alignment landmarks*; they also simplify downstream partial redaction.
+
+## 9. Temporal resistance tie-in (Ghost series, scoped responsibly)
+Temporal resistance (historical embeddings outliving operational relevance) matters *only when recency or availability change correctness or utility*. Examples:
+- **Matters**: onboarding assistants prioritizing deprecated vs current process docs; contributor recommenders (Ghost series); compliance workflows with policy supersession; rapidly shifting architectural decisions.
+- **Usually does *not* matter**: stable versioned product documentation where older versions are explicit; evergreen reference material (mathematical proofs); archived API specs where version selection is user-controlled or easily inferred from the environment.
+
+So apply *temporal decay & availability filters* when the *problem definition* demands present-state alignment. Otherwise, decay can become silent accuracy erosion.
+
+## 10. Embeddings aren't silver bullets
+Common anti-pattern: “Vector everything → dump top 200 hits into window.” Problems:
+- Latent topic bleed (broad paragraphs include tangential clauses)
+- Redundancy (slight paraphrases all included)
+- Token budget cannibalized by boilerplate
+
+**Countermeasures**: cluster → centroid; recency gating; authorship diversification; acceptance / click feedback loops to recalibrate weights.
+
+## 11. Phase vs monolith calls
+When building sophisticated analytical reports (e.g., multi-dimensional engineer competency profile):
+- **Monolith risk**: one massive call (90% window) → drift + cost + brittle retries.
+- **Naive decomposition risk**: splitting into 10 calls each re-consuming 70% overlapping context → cost explosion.
+
+**Balanced approach**: 
+- Phase 1: Normalize + extract structured primitives (events, metrics, qualitative snippets) → canonical JSON.
+- Phase 2: Aggregate + temporal smooth (decay weighting, anomaly flags) using *only* structured primitives (cheap tokens).
+- Phase 3: Narrative synthesis referencing primitive ids, not raw text.
+
+This preserves cross-context nuance *without* repeatedly injecting raw artifacts.
+
+## 12. Building semantic human (or system) profiles
+Goal: smallest powerful composite object capturing 360º evolution (onboarding → departure). Pipeline sketch:
+1. Ingest artifacts (PRs, issues, reviews, comments, diffs).  
+2. Normalize → event schema (timestamp, type, surface, domain_tags, authorship_role).  
+3. Derive metrics (review latency, domain spread, semantic tag efficiency, ownership shifts).  
+4. Periodic distilled report (weekly/monthly) — bounded token target (e.g., 1.2k).  
+5. Embed *report summaries*, not raw conversations.  
+6. Final profile object: layered: (core_stats, domain_vectors, temporal_trend_summaries, anomaly_notes).  
+7. Access pattern: retrieval first hits profile; *only on ambiguity* escalate to archived raw slices.  
+
+Result: queries answerable in &lt;5% of original cumulative token footprint.
+
+## 13. Token budgeting ledger (tactical)
+| Segment | Target % | Hard Max % | Notes |
+|---------|----------|------------|-------|
+| System rails + schema | 3–5 | 7 | Keep terse; reference glossary url instead of re-defining |
+| Context (staged) | 40–50 | 55–60 | Enforce via projected tokenizer; trim oldest low-impact spans |
+| Reasoning allowance (implicit) | 15–25 | — | Don't starve; frontier models need latent space |
+| Output | 15–25 | 30 | Use JSON/markdown hybrid to avoid verbosity |
+| Slack buffer (safety) | 5 | 10 | Prevent overflow on slight length variance |
+
+## 14. Measurement & observability
+Track:
+- `window_utilization_ratio`
+- `retrieval_unique_author_ratio`
+- `dup_token_pct` (post-dedupe shrink factor)
+- `hallucination_incidents_per_100_calls` (manual or heuristic flagged)
+- `cost_per_successful_task`
+- `temporal_staleness_rate` (stale doc hits / total hits)
+- `answer_revision_rate` (user follow-up corrections)
+
+Improvement loop: correlate hallucination spikes with utilization > threshold or cluster diversity collapses.
+
+## 15. Anti-pattern catalog
+| Anti-pattern | Symptom | Fix |
+|--------------|---------|-----|
+| Context hoarding | 80–95% window pre-answer | Hard ceilings + summarizers |
+| Granularity mismatch | Irrelevant half-paragraphs | Drilldown refinement |
+| Temporal amnesia | Outdated recommendations | Time-decay scoring |
+| Redundant recursion | Re-fetch same linked issues | Cache + signature hashing |
+| Over-summarization | Lost nuanced constraints | Hybrid (extract key spans + keep originals selectively) |
+| Output drift | Hallucinated sections | Explicit schema + refusal clauses |
+
+## 16. Practical heuristics (field-tested)
+- Project tokens *before* fetching deep links; abort early if budget blown.
+- Drop any block whose novelty embedding similarity to kept set &lt; 0.06 (tunable).
+- Always include the *question* twice (top & bottom) for noisy multi-block contexts.
+- Maintain a global `reserved_tokens` integer updated as segments accumulate; forbid negative.
+
+## 17. Minimal pseudo-implementation
+```ts
+async function assembleContext(q: string) {
+  const budget = new TokenBudget(MAX_TOKENS, { reserveAnswer: 0.25, reserveReasoning: 0.2 });
+  const canonical = normalizeQuery(q);
+  const coarse = await coarseRetrieve(canonical, 50);            // paragraphs
+  const rescored = applyTemporalDecay(coarse);                    // Ghost tie-in
+  const pruned = dedupe(rescored, 0.94);
+  const top = pruned.slice(0, 12);                                // heuristic
+  const sentences = await fineExpand(top, 10);                    // selective
+  const salient = salienceCompress(sentences, budget.remainingFor('context'));
+  const blocks = boundaryWrap(salient);
+  return buildPrompt({ system: SYSTEM_RAILS, blocks, query: canonical, budget });
+}
+```
+
+## 18. Case references (internal linkage)
+- GitHub thread assistant — context recursion + depth caps: [Context-aware answers on GitHub](/writing/context-aware-answers-on-github)
+- Temporal weighting rationale — decay & availability: [Ghost in the machine part 2](/writing/ghost-in-the-machine-part-2)
+- Semantic vector persistence (ghost footprint) — failure case: [Ghost in the machine part 1](/writing/ghost-in-the-machine-part-1)
+- Legacy vector gravity as initial observation: [Semantic task matchmaking](/writing/semantic-task-matchmaking)
+
+## 19. When *not* to over-engineer
+- One-shot classification / extraction when raw input &lt;&lt; window
+- Low-stakes summarization (quick gist) where minor drift acceptable
+- Prototype phase where *data coverage* unknown (optimize selection later)
+
+**Smell**: If your pipeline has more summarization steps than original artifacts, you may be cargo-culting sophistication.
+
+## 20. Roadmap (beyond baseline)
+| Maturity | Capability |
+|----------|-----------|
+| 0 | Raw concatenation + naive prompt |
+| 1 | Basic retrieval + ordering |
+| 2 | Dedupe + temporal decay + boundaries |
+| 3 | Granular drilldown + structured primitives + budget ledger |
+| 4 | Adaptive compression (middle-out, semantic diffing) |
+| 5 | Learning ranker (reinforcement from outcome feedback) |
+| 6 | Cross-session memory graph + dynamic persona modulation |
+
+## 21. Controlled agency vs unbounded agents
+Fully autonomous “tool-call-anything” agents frequently **self-bloat**: recursive tool invocations fetch overlapping context, rehydrate identical embeddings, and burn budget on speculative planning. Debugging becomes opaque as the reasoning path fragments across dozens of ephemeral tool traces.
+
+Controlled agency pattern:
+- **Planner quota**: hard cap tool invocations per turn (e.g., 3) with explicit justification tokens budgeted.
+- **Tool result summarization**: each tool response compressed to a fixed envelope (e.g., ≤120 tokens) before reinsertion.
+- **Duplicate suppression**: signature/hash recent tool outputs—skip if semantic similarity &gt; 0.92.
+- **Context deltaing**: inject only *diffs* vs previously provided workspace state.
+- **Human override hooks**: ability to freeze planner and request rationale snapshot when drift suspected.
+
+> Goal: retain determinism over the attention surface; agents *contribute* curated deltas instead of flooding their own window.
+
+## 22. Closing
+Context engineering isn't about *feeding more*—it's about *feeding purposefully less, better*. The constraint mindset (budget, prune, boundary, decay) outperforms raw window escalation even as models scale. Architectural intent is now a competitive advantage: the teams who sculpt the model's attention surface win on quality, latency, and trust.
+
+> North star: smallest sufficient, temporally grounded, diversity-preserving slice + guaranteed reasoning headroom.
+
+### See also
+- Origin story — [Context-aware answers on GitHub](/writing/context-aware-answers-on-github)
+- Temporal decay playbook — [Ghost in the machine part 2](/writing/ghost-in-the-machine-part-2)
+- Ghost footprint diagnosis — [Ghost in the machine part 1](/writing/ghost-in-the-machine-part-1)
+- Capability glossary — [Glossary](/writing/_glossary)
+
+*Future write-up teaser*: forthcoming open-source release on large-scale semantic profile generation (multi-million token condensation → sub-kilobyte persona objects). Stay tuned.

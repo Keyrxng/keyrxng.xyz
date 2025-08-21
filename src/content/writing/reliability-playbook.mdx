@@ -1,0 +1,60 @@
+---
+title: "Reliability & Determinism Playbook"
+publishedAt: "2025-07-07"
+summary: "Canonical patterns: deterministic tests, RPC rotation, latency trimming, CI flake prevention."
+readingTime: "5 min"
+tags: ["Reliability", "Testing", "Performance", "Infra"]
+---
+
+> Replaces repeated descriptions across testing, payment portal, and RPC posts.
+
+## 1. Deterministic Web3 test layering
+1. Fork: probe & rank RPCs → pick fastest healthy; abort loud if fork fails.
+2. Funding: impersonate + approvals + transfers; idempotent + logged.
+3. Wallet: stub provider object (predictable `request`, event stubs) instead of brittle extension automation.
+4. Intercepts: only stability-critical calls (balance, allowance) not the entire network.
+5. Unit isolation: pure logic & branching via Jest + MSW; UI narrative via Cypress.
+
+## 2. Flake taxonomy
+| Cause | Cure |
+|-------|------|
+| Stalled RPC | Pre-run latency probe + cache |
+| Nonce races | Serialized funding orchestration |
+| Missing wallet | Deterministic stub; treat absence as branch |
+| Late injection | Short retry loop then guidance toast |
+
+## 3. RPC reliability
+Transparent proxy rotates to next fastest on failure. Principle: **user never pays retry cost**.
+
+## 4. Performance heuristics
+- Collapse duplicate network detection.
+- Hardcode invariant token metadata (trim 6–7 calls).
+- Optimistic static shell + deferred dynamic state.
+- Prune unused assets before refactoring.
+
+## 5. CI harness
+Bounded poll for chain readiness + serialized funding removes “nonce too low” noise; logs narrate setup story.
+
+## 6. Observability
+Log: fork source, latency stats, funding saga, rotation events, request count delta pre/post optimization.
+
+## 7. Portable checklist
+```
+□ Probe & rank RPCs
+□ Deterministic fork or abort
+□ Idempotent funding run
+□ Stub provider (mobile aware)
+□ Minimal selective intercepts
+□ Rotation proxy in prod path
+□ Optimistic static render
+□ Flake taxonomy log
+```
+
+---
+*Determinism happens on purpose; this playbook centralizes the knobs.*
+
+### See also
+- [Shipping reliable tests](/writing/automated-testing-infra)
+- [Sub-second payment portal](/writing/sub-second-payment-portal)
+- [Payment portal UX](/writing/payment-portal-ux-on-mobile-and-desktop)
+- [Fail-fast RPC selection](/writing/fail-fast-rpc-selection-for-real-apps)

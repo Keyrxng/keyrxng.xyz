@@ -1,0 +1,109 @@
+---
+title: "A type-level breakthrough that shifted my confidence"
+publishedAt: "2025-05-23"
+summary: "Six months in, a stalled complex TypeScript problem became a turning point—applying practiced patterns to contribute a solution and shift my self-perception."
+tags: ["TypeScript", "Growth", "Recognition", "Advanced Types"]
+readingTime: "6 min"
+relatedWorkSlug: ts-dynamic-webhook-enum
+---
+
+> Note: Type-level inflection; shared strategies: [type system patterns](/writing/type-system-patterns).
+
+I'd been watching from the sidelines for six months.
+
+By this point, I had nearly twenty successfully merged PRs across the Ubiquity ecosystem—mostly in the payment portal, a few in the devpool directory. I was building momentum, gaining recognition, becoming ubiquitous as planned. But there was still a hierarchy in my mind. There were the regular contributors like me, and then there were the senior engineers who worked on the really complex stuff.
+
+Whilefoo was one of those engineers.
+
+## The untouchable domain
+
+While I'd been contributing to various parts of the ecosystem, whilefoo owned the kernel. Always had. The UbiquityOS kernel was the brain of the entire operation—the AI automation, the sophisticated GitHub integrations, the complex orchestration that made everything else possible.
+
+In six months of working in the same ecosystem, we'd never actually spoken. He lived in a different domain, solving problems I assumed were beyond my reach. When I checked the kernel repo for updates, I did so with the reverence of someone studying code they hoped to understand someday.
+
+But I kept studying. In my free time, I'd been grinding through TypeHero.dev challenges, exploring advanced TypeScript concepts—generics, conditional types, template literals, mapped types. The kind of fancy type-level programming that felt like magic when I first encountered it.
+
+## The moment everything shifted
+
+Then one day, I saw it. An issue in the kernel repo where whilefoo was struggling with complex type-level abstractions. Something about dynamically generating webhook enums from Octokit while integrating with TypeBox validation.
+
+> "I haven't figured out how to use them with typebox"
+
+This was it. The engineer I considered unreachable—one of the people I mentally classified as “senior” and operating on a different tier—was publicly blocked on a TypeScript problem. The same advanced type concepts I'd been studying as a hobby.
+
+The solution didn't spring to mind immediately. But as I looked at the problem—transforming `workflow_run` + `webhook.action` into `workflow_run.requested` while preserving the original values, all at the type level—patterns started emerging from those late-night TypeHero sessions.
+
+Template literal types. Conditional types with `infer`. Recursive pattern matching. Mapped types that preserve relationships.
+
+I spent an hour trying different approaches, optimizing, refining:
+
+```typescript
+import { emitterEventNames, EmitterWebhookEventName as GitHubEventClassName } from "@octokit/webhooks";
+
+type Formatted<T extends string> = T extends `${infer Prefix}.${infer Rest}` ? `${Prefix}_${Formatted<Rest>}` : T;
+
+type GithubEventWebHookEvents = {
+  [K in GitHubEventClassName as Formatted<Uppercase<K>>]: K;
+};
+
+type Prettify<T> = {
+  [K in keyof T]: T[K];
+  // this just spreads the object into a type
+
+  // we need to use {} otherwise it'll type it as an object
+  // eslint-disable-next-line @typescript-eslint/ban-types
+} & {};
+
+export const githubWebhookEvents: Prettify<GithubEventWebHookEvents> = emitterEventNames.reduce((acc: GithubEventWebHookEvents, cur) => {
+  const formatted = cur.replace(/\./g, "_");
+  const upper = formatted.toUpperCase() as Formatted<Uppercase<GitHubEventClassName>>;
+  acc[upper] = cur as Extract<GitHubEventClassName, Uppercase<GitHubEventClassName>>;
+  return acc;
+}, {} as GithubEventWebHookEvents);
+```
+
+The recursive template literal type that could transform any depth of dot notation into valid TypeScript identifiers, while the mapped type preserved the original Octokit values for compatibility.
+
+## The response that changed everything
+
+I submitted the solution, nervous but confident it would work. The response was immediate and profound:
+
+> "This is great! Just added some fixes because values shouldn't be changed..."
+
+Whilefoo didn't just accept the solution—he praised it. The project lead chimed in:
+
+> "This looks promising! I was just reviewing their work related to this and began searching for a solution at the same time."
+
+For the first time in my career, I contributed a complex type-level solution where prior attempts had stalled—not via luck, but by applying patterns from deliberate practice.
+
+## The reality check
+
+It didn't change everything overnight, but it reframed my internal model: I could contribute leverage in domains I hadn't previously touched. Perception shifted from “reliable implementer” to “can occasionally unlock stalled abstractions.”
+
+## Generalizable pattern
+
+The core technique was subtractive inference load: precompute a mapped shape rather than forcing the compiler through repeated conditional expansion. I later reapplied that lens for larger union simplifications.
+
+## The beginning of a new dynamic
+
+This wouldn't be the last time I'd solve a complex TypeScript problem that the team couldn't crack. In fact, there was another occasion coming where it wouldn't just be whilefoo—it would be the entire software engineering team stumped by a type-level challenge.
+
+But that's a story for [another chapter](/writing/fixing-ts-union-explosions).
+
+What mattered about this moment was the shift it represented. I was no longer just someone building up from the bottom. I was someone who could occasionally reach heights that others couldn't. The gap between aspiration and reality had narrowed, just a little.
+
+## The lesson hidden in the complexity
+
+The irony wasn't lost on me that this breakthrough came from hobby learning rather than work assignments. While I'd been methodically contributing to projects, the real growth was happening in the margins—in TypeScript challenges that had no immediate application, in concepts that seemed purely academic.
+
+Those "useless" type gymnastics turned out to be exactly the mental models needed to solve a production problem that blocked a senior engineer.
+
+It was a reminder that mastery often comes from exploring beyond the boundaries of your immediate responsibilities. The best tools in your toolkit might be the ones you picked up while playing, not while working.
+
+---
+
+*Sometimes the most important breakthroughs happen when you realize the gap between you and your heroes is smaller than you thought.*
+
+### See also
+- Case study — [/work/ts-dynamic-webhook-enum](/work/ts-dynamic-webhook-enum)
+- Previous chapter — [The perfect solution that never shipped](/writing/gasless-onboarding)

@@ -1,0 +1,52 @@
+---
+title: "WebAuthn Account Abstraction"
+publishedAt: "2025-03-26"
+summary: "A practical approach to account abstraction using WebAuthn passkeys, deterministic EOAs, and Account Kit to make onboarding invisible."
+tags: ["WebAuthn", "Account Abstraction", "EIP-4337"]
+readingTime: "4 min"
+relatedWorkSlug: webauthn-aa
+---
+
+Users shouldn't notice “account abstraction.” They should sign in, act, and move on. This was my long-timeline, low-pressure background project: make a wallet experience feel invisible by deterministically deriving an address from things a user already does, not making them learn seed phrases.
+
+## The sandbox mandate
+When I onboarded I was told: pick a “long timeline, low effort” thread to explore between core tasks. I could have picked something safe. I picked pioneering a WebAuthn-based, deterministic EOA system that would one day underpin a credit-card-like product vision. If it worked, “blockchain” would fade into infrastructure—no seed phrase rituals, no MetaMask popups, just action.
+
+## Version zero: a proof of determinism
+A passkey (WebAuthn credential) gives you stable, scoped material. Combine that with OAuth metadata and organizational salts and you get multi-source entropy that's both reproducible *and* brutally hard to brute force. I kept stacking deterministic layers—each reversible only if you possessed *all* the upstream context. Every additional hash or derivation hop felt like tightening a vault door without losing the key.
+
+```ts
+const entropies = [
+  `${displayName}-${id}-${login}`,
+  `${oauth.id}-${oauth.ca}-${oauth.iid}`,
+  `${cred.id}-${cred.type}-${cred.rawId}`,
+  orgSaltWords.join("-")
+];
+const seed = entropies.join("|"); // feed into PBKDF2/HKDF -> mnemonic -> signer
+```
+
+The result: generate the same wallet on demand; never store or export a private key; interact through a smart account abstraction; sponsor gas where needed.
+
+## Security first, always reversible (for us)
+I approached it like an adversary: what inputs can drift? What fields might an IdP mutate? Which salts must be organizationally pinned? I documented formats, froze transformations, and treated each entropy source as a hardened dependency. Re-derivation had to *always* succeed for legitimate users—and *never* be guessable for outsiders missing even one component.
+
+## Parallel track: cryptography déjà vu
+This was only my second deep cryptography dive—the first was reverse-engineering libsodium nonce derivation to reconcile with TweetNaCl for a permit system running under Worker constraints (that story lives in the permit piece). That earlier teardown gave me the confidence to stare at primitives instead of cargo-culting wrappers. Here, it translated to tightening each entropy hop with intent.
+
+## Industry timing (accidentally early)
+The irony: major account abstraction players (Safe / Gnosis, Alchemy, etc.) began publicly exploring WebAuthn paths *after* I had already fought through my implementation. I only learned that later. That lag was validating—my exploration wasn't reinventing the wheel; it was slightly ahead of the curve in that ecosystem.
+
+## Communication friction
+Explaining multi-source, deterministic key derivation to management in succinct updates was a balancing act. Early on, verbosity was praised (“thorough, detailed, proactive”). Later, the same thoroughness was framed as noise. That tension forced sharper summaries: *what changed, why it reduces risk, how it preserves UX*. Research isn't just code; it's maintaining organizational patience while the shape hardens.
+
+## The wallet without ceremony
+The implemented system could: prompt a passkey, derive the deterministic signer (never exporting secrets), route interactions through a smart account layer, and leave the user with the illusion of a conventional login. Long-term, this was meant to underpin credit-style balances and seamless transfers. The value was the *absence* of friction—users experience capability, not cryptography.
+
+## Looking back
+This project reminded me why I love edge work: building where something is no longer theory but not yet a product. The thrill isn't just the technical novelty; it's designing a reversible, secure pathway that disappears into UX. It also taught me restraint: research momentum can outrun organizational clarity; shaping communication is as critical as shaping primitives.
+
+*The best abstraction work makes capability feel ordinary—and the hardest part is not the cryptography, it's sustaining clarity while the idea matures.*
+
+### See also
+- Cryptography arc — [Secure permits for ERC20 and ERC721](/writing/secure-permits-for-erc20-and-erc721)
+- Case study — [WebAuthn AA case study](/work/webauthn-aa)

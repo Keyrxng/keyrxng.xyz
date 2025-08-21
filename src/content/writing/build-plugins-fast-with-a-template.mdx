@@ -1,0 +1,50 @@
+---
+title: "Build UbiquityOS plugins fast with a dual-runtime template"
+publishedAt: "2025-04-05"
+summary: "Start from a scaffold that already knows Actions vs Workers, has Supabase adapters, and ships with validation and tests."
+tags: ["Templates", "Workers", "GitHub Actions"]
+readingTime: "4 min"
+relatedWorkSlug: plugin-template
+---
+
+> Note: Scaffold / template leverage narrative. See [Glossary](/writing/_glossary) for term references.
+
+The template didn't start as a planned product—it started as a pattern I kept reaching for during a run where everything seemed to be clicking.
+
+## The run that led here
+
+After my second internal promotion the momentum was obvious: my monthly take-home doubled, I'd closed the income gap with a previous skilled trade, and a short run of concentrated work had me maintaining core kernel pieces and shipping ports of older plugins. Those long days taught a simple truth: if the same friction shows up in five repos, it probably deserves a tool.
+
+## The scaffold I kept returning to
+
+I had a local scaffold that shaved off the boring parts of starting a plugin. It wired entry points, gave me TypeScript shapes, and bundled a rough Supabase layer. Every time I bootstrapped a new plugin I found myself copying the same bits. That repetition turned a local convenience into a product idea: what if the scaffold was intentional, documented, and safe for others to copy?
+
+## The rewrite: make the hack production ready
+
+The work was small and focused. I kept two shallow entry points—`src/main.ts` for Actions and `src/worker.ts` for Workers—moved logic into shared modules, formalized the Supabase adapter layer, added TypeBox validation, and wired CI for tests and linting. The point was not to invent features but to remove friction: make the first hour about product, not plumbing.
+
+```ts
+export async function plugin(inputs: PluginInputs) {
+	const { eventName, eventPayload: payload, settings, authToken: env.UBIQUIBOT_TOKEN } = inputs;
+	const context = { eventName: payload.eventName, eventPayload: JSON.parse(payload.eventPayload), settings, authToken: env.UBIQUIBOT_TOKEN };
+	return await runPlugin(context);
+}
+```
+
+## The moment of skepticism
+
+I imagined this being more visible than it was. Adoption stayed mostly internal, which stung at first—if a tool is useful, why doesn't it spread? The answer turned out to be partly timing and partly scope: a template helps a specific part of the workflow, and not every team feels that pain in the same place.
+
+## Why it still mattered
+
+For the people who did use it, the template paid back quickly: fewer setup errors in PRs, less time spent on environment wiring, and a clearer path for new contributors to get to behavior and tests. Those compounding wins translated into better reviews and faster iteration—small daily savings that add up.
+
+## Looking back
+
+Building tooling that mainly helps a few contributors isn't a failure. It changed how I think about making impact: sometimes the highest-leverage work is the scaffolding that makes other people's work easier. The template taught me to value small, practical infrastructure—things that reduce friction for the next pull request, even if they never become headline projects.
+
+*The compound value of removing friction is underrated: small infra that saves minutes becomes a multiplier for focus and progress.*
+
+### See also
+- Installer write-up — [Install plugins in the browser](/writing/install-plugins-in-the-browser)
+- Case study — [Plugin template case study](/work/plugin-template)

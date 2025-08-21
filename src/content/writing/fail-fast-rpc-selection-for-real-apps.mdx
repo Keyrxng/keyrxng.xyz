@@ -1,0 +1,59 @@
+---
+title: "Fail-fast RPC selection for real dApps"
+publishedAt: "2025-05-07"
+summary: "Rank endpoints by latency, rotate on error via a provider proxy, and keep types + CI solid."
+tags: ["Web3", "Reliability", "Performance"]
+readingTime: "5 min"
+relatedWorkSlug: rpc-handler
+---
+Manual blacklists don't scale. A handler that ranks endpoints by latency and retries through a proxy on error does.
+
+What surprised me was that the hardest part wasn't the proxy or rotation logic—it was packaging. This was my first real tour through publishing something other people would `npm install` across browser, Node, and edge contexts. No framework comfort blanket. Just build targets, module formats, type output, and the uncomfortable feeling that I might ship a broken `main` field and silently ruin someone's deploy.
+
+## Learning the “boring” bits first
+I started with esbuild hand-rolled scripts: one pass for ESM, one for CJS, plus a types pass via `tsc --emitDeclarationOnly`. No `tsup` yet; I didn't know it existed (good to roll your own once at least, but I prefer tsup these days). Two output trees, one `package.json` with `main`, `module`, and `types` wired manually. It was clunky—but the mechanical repetition forced me to *understand* where each artifact landed and why dual formats mattered for downstream bundlers.
+
+## Dynamic types as a product feature
+I wanted autocomplete for network names, chain IDs, and derived helper methods. That meant generating literal union types from data. A prebuild script pulled Chainlist + local extras, emitted a `constants.ts` and a giant `index.d.ts` surface with strongly typed maps. Result: smooth IntelliSense and fewer “stringly-typed” mistakes for consumers. Cost: a swollen distribution (thousands of lines; ~500MB unpacked at one point). Worth it early—ergonomics > size while proving value.
+
+## Size regret (and acceptance)
+Only later did I internalize that shipping every network/provider pair verbatim wasn't sustainable. But prematurely optimizing would've slowed delivery and maybe killed momentum. The handler ran a full year with zero consumer-reported faults during my tenure. Stability bought me the right to later imagine a leaner v2 (or a Rust core)—not the other way around.
+
+## Rotation philosophy
+High-level rule: a user should never “pay” for an infra hiccup. If a call fails, rotate and retry transparently. That human principle dictated the technical primitives: bounded probe timeouts, latency ranking cache, Proxy layer for seamless failover.
+
+## The rewrite saga
+A later rewrite effort (including AI-assisted generation) explored a leaner direction but omitted some earlier defensive behaviors (transparent rotation, typing depth, BFT consensus, etc...). Reliability questions attributed to the original were traced to external factors (e.g., invalid permits). The initial implementation's year of stability highlighted the value of conservative failover defaults.
+
+Seeing the original hold up was informational: durability and narrative control diverge sometimes. I also realized I had read some interpersonal signals as deeper alignment than they were.
+
+## Where it's heading
+I'm planning a continuation of the original: purgeable datasets, slimmer, faster, and a rewrite in Rust. Same principle, tighter core.
+
+## What actually changed
+Never google for a chain provider or dataset ever again. Users stopped seeing random spinner stalls when an endpoint died mid-flow. Support stopped asking for “the list of good RPCs” because there wasn't one—selection was living logic now. Devs wiring new apps got types and autocomplete for networks out of the box instead of hunting magic numbers. 
+
+And the package quietly powered claims, onboarding, CI/CD, and internal scripts without incident for a year. That quiet reliability was the win.
+
+## A tiny slice of the heart
+```ts
+// Transparent failover: user never pays for a dead endpoint
+return new Proxy(provider, {
+  get: (target, prop) =>
+    typeof (target as any)[prop] === 'function'
+      ? async (...args: unknown[]) => {
+          try { return await (target as any)[prop](...args); }
+          catch { const next = await this.getFastestRpcProvider(); return (next as any)[prop](...args); }
+        }
+      : (target as any)[prop]
+});
+```
+
+## In one breath
+Hand-rolled dual builds. Generated types as product surface. Latency probes with bounded timeouts. Proxy rotation on error. Cache, refresh, forget about it. A year of silence (the good kind).
+
+---
+
+### See also
+- Case study — [RPC handler case study](/work/rpc-handler)
+- Performance write-up — [Sub-second payment portal](/writing/sub-second-payment-portal)

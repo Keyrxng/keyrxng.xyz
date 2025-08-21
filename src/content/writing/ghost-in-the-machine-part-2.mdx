@@ -1,0 +1,141 @@
+---
+title: "Practical Temporality (Part II): Repairing Time-Aware Semantic Recommendations"
+description: "Low-risk implementation playbook: decay, availability, hybrid scoring, safer fallbacks, and experiment design for temporal relevance." 
+summary: "Part II of the 3-part series: turns the Part I diagnosis of temporal resistance into a concrete, minimal rollout plan—time decay, hybrid signals, availability filters, safer fallbacks, metrics, and guardrails."
+publishedAt: "2025-08-18"
+date: 2025-08-18
+tags:
+  - semantic-search
+  - embeddings
+  - recommender-systems
+  - engineering-practices
+---
+
+> Series context: Part I named the failure mode ("temporal resistance"). This post operationalizes the fix. The companion field note ("Semantic task matchmaking") contains the raw observational narrative that sparked the investigation.
+
+## Executive summary
+
+Part I showed how stale-yet-strong semantic vectors keep recommending absent contributors. Here we apply *minimal force*: add exponential time decay, integrate availability, blend lightweight activity signals, and enforce safer fallback semantics. We keep the vector DB untouched and layer temporal intelligence in a re-scoring step. A small A/B plus offline replay gives high confidence without risky rewrites.
+
+## Design contract (short)
+
+- Inputs: issue text, contributor embedding, contributor activity metadata (last contribution timestamp, recent commit or PR counts), availability flag if present.
+- Output: ranked contributor recommendations scored for semantic relevance and temporal suitability.
+- Error modes: missing metadata → conservative default; insufficient candidates → return no recommendation instead of a low-confidence match.
+
+Keep the contract small: the goal is to improve operational relevance without discarding semantic quality.
+
+## Core strategies (what to implement)
+
+1. Time-weighted similarity (low risk)
+
+- Formula: adjusted_similarity = base_similarity * exp(-λ * days_since_last_activity)
+- Implementation notes: compute days since last meaningful activity using PR merge times or commit timestamps. Choose an initial λ that decays slowly (for example, half-life between 90–180 days) and tune from there.
+- Rollout: feature flag the new scoring and run it against historical queries to compare rankings.
+
+2. Hybrid scoring with activity signals (medium risk)
+
+- Combine normalized signals: final_score = w_semantic * semantic_norm + w_recency * recency_norm + w_activity * recent_commits_norm + w_availability * availability_flag
+- Rationale: recency and activity are complementary — recency captures last seen, activity captures ongoing contribution intensity.
+- Implementation: normalize each signal into [0,1] using historical percentiles before combining.
+
+3. Contributor status & availability (high value)
+
+- Source availability from non-traditional places: HR system, GitHub org membership, OWNERS files, or a simple `active`/`inactive` toggle in the contributor profile.
+- Use status to hard-filter or heavily de-prioritize recommendations for departed people. Keep profile history for analytics, but exclude them from assignment by default.
+
+Implementation detail (Ubiquity OS specificity): no contributor profile embeddings exist; retrieval is issue→similar issues→their assignees. Therefore: *do not* attempt to precompute contributor vectors for this iteration. Inject time-aware re-ranking and fallback logic **after** similar-issue expansion, treating contributors as derived candidates with attached metadata.
+
+## Implementation sketch (where to change code)
+
+- Keep the vector DB query as the first step: fetch top-N semantic candidates (N small: 10–50). This preserves the model's efficiency.
+- Re-score those candidates in a local scoring module which adds recency/activity/availability features and computes final_score.
+- Sort final_score and return top-K.
+
+Minimal pseudocode:
+
+1. issue_vec = embed(issue_text)
+2. candidates = vector_db.search(issue_vec, top_n=50)
+3. for c in candidates:
+   - base_sim = cosine(issue_vec, c.embedding)
+   - days = days_since(c.last_activity)
+   - adjusted = base_sim * exp(-λ * days)
+   - final_score = mix(adjusted, recent_commits_norm, availability)
+4. return sort_by(final_score)[0:K]
+
+The key is to do the re-scoring outside the vector DB and keep the DB layer simple and fast.
+
+## Experiment plan (A/B and metrics)
+
+Metrics to monitor:
+- Recommendation acceptance rate (assign/accept by humans)
+- Fraction of recommendations pointing to dormant/departed contributors
+- Time-to-complete after recommended assignment
+- Precision@K using a small human-labeled sample of recommendation correctness
+
+A/B framework:
+- A (control): existing semantic-only recommender
+- B (treatment): time-weighted + availability
+- Run for 2–4 weeks depending on traffic; collect acceptance rate and manual labels on a 200-sample subset.
+
+Decision rule:
+- Deploy B if acceptance rate improves or stays neutral and dormant-recommendation fraction drops substantially. Roll back if acceptance drops significantly or manual labels show a regression in perceived quality.
+
+## Edge cases and operational tradeoffs
+
+- Cold-start contributors: new hires have low historical signal. Consider soft boosts for recent activity, claimed expertise, or owner lists for critical subsystems.
+- High-churn teams: recent activity isn't always a proxy for suitability. Allow OWNER lists or component leads to override automatic scoring for sensitive areas.
+- Embedding/model upgrades: re-evaluate λ and normalized weights whenever you change the embedding model — new embeddings shift distances.
+
+Chunk granularity correction: in Ubiquity OS the unit of semantic matching is the issue body and title. Do not assume the system is embedding PR descriptions or code diffs — the code path fetches similar *issues* by cosine distance on their issue-level embeddings, then retrieves the developers who were assigned to those similar, completed issues. This distinction matters when designing decay and availability heuristics.
+
+## Vector footprint at scale — an illustrative example
+
+Vector-space issues are not unique to this recommender; they appear anywhere you persist high-dimensional embeddings over long-lived text artifacts. Consider a hypothetical deployment to make the problem concrete:
+
+- Install a chatbot across 5 organizations. Each org has ~200 repositories (so ~1,000 repositories total).
+- Each repository sees a moderate merge velocity: 5 merged PRs per month on average.
+- Each PR generates ~10 comment-like text artifacts on average (reviews, replies, automation comments).
+
+That yields roughly 1,000 repos * 5 merges/month * 10 comments = 50,000 new comment-vectors per month. Over a year that's ~600k vectors. If you also index issues, PR bodies, and other artifacts the count grows quickly into the millions.
+
+If every vector is treated equally (no decay, no namespace-scoping, no filtering), then a cosine search from a user query can surface semantically similar items from any time period or any organization. In practice that creates multiple problems:
+
+1. Scope leakage: answers cross organizational boundaries and surface irrelevant or sensitive details from other orgs or old conversations.
+2. Performance & cost: large vector collections increase latency and storage costs; the nearest-neighbor index needs more memory and more expensive CPU/GPU cycles for high recall.
+3. Poisoning: without deduplication and pruning, spammy or low-quality historical comments remain and can dominate similarity results for common queries.
+4. Maintenance burden: fixing the index requires heavy pre- and post-processing (namespace sharding, reindexing, cluster pruning, dedupe, re-embedding after model updates) — each of which is expensive and error-prone at scale.
+
+Mitigations you will need as soon as you cross tens to hundreds of thousands of vectors:
+
+- Namespace the index by org/repo and prefer per-namespace search where appropriate.
+- Apply time decay during ranking so older artifacts are de-prioritized unless they are explicitly revalidated.
+- Deduplicate and cluster vectors periodically to eliminate historical noise and spam.
+- Use metadata filtering (repo, org, label, author) as a first-class filter before similarity scoring.
+- Consider incremental re-embedding strategies during model upgrades rather than full reindexes when possible.
+
+The bottom line: vector stores are powerful, but at scale they require deliberate engineering choices around indexing, decay, and pruning. The ghost problem in Ubiquity OS is a small demonstration of a broader operational reality: embeddings remember, organizations change, and without decay and scoping the result is an expensive and fragile search surface.
+
+## Deployment checklist
+
+1. Add a feature flag for temporal scoring.
+2. Implement the re-scoring module and unit tests for adjusted_similarity calculations.
+3. Instrument metrics (dormant recommendation percentage, acceptance, time-to-complete).
+4. Run offline replay: re-score historical issue-to-contributor queries and produce diffs.
+5. Start A/B test with a conservative λ and monitor.
+
+## Example: choosing λ and a safe threshold
+
+- Start with a half-life of ~120 days. Convert half-life to λ via λ = ln(2) / half_life.
+- Safe threshold: pick a conservative value by replaying historical queries and sampling human labels; a reasonable initial default is to require adjusted scores to be within the top 5% of historical scores for the same query type to be considered "high-confidence."
+
+## Closing & forward path
+
+Paradox restated: embeddings remember; organizations evolve. The pragmatic cure is not to discard semantic signal, but to *contextualize* it. A thin temporal layer—decay, availability, hybrid scoring, thresholded fallbacks—restores operational trust.
+
+Longer horizon ideas:
+- Learn a time-aware ranker (pairwise or listwise) once you have labeled acceptance outcomes.
+- Introduce ownership graphs to modulate semantic similarity with structural responsibility.
+
+- Back: [Part I – The Ghost's Footprint](./ghost-in-the-machine-part-1)  
+- Companion: [Semantic task matchmaking](./semantic-task-matchmaking)

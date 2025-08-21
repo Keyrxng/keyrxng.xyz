@@ -1,0 +1,73 @@
+---
+title: "When TypeScript unions get too big to visualize (and people give up)"
+publishedAt: "2025-05-27"
+summary: "Sprawling unions kill maintainability. This approach decomposes, reifies structure, and stops editor crashes (and reviewer fatigue)."
+tags: ["TypeScript", "Types", "Advanced Types", "Developer Experience"]
+readingTime: "7 min"
+relatedWorkSlug: ts-union-too-complex
+---
+
+> Note: Compiler ergonomics; patterns: [type system patterns](/writing/type-system-patterns).
+
+In my first kernel TypeScript breakthrough I'd solved a problem a senior maintainer couldn't. This time *everyone* had already tried—and failed. The issue sat there for months like a structural crack in the foundation: `Expression produces a union type that is too complex to represent.` A boring sentence that translated to “Your types are too clever for the compiler; pick a side: safety or sanity.”
+
+## The slow grind before I arrived
+By the time I circled back to the kernel, there was a trail of failed experiments: narrowing generics, pinning a single event type, casting contexts, debating whether to generate a forest of type guards (one per webhook). Each attempt either shifted the error, made CI angry, or created a maintenance cliff. The conversation thread read like a time-lapse of smart people negotiating with a compiler that just shook its head.
+
+The irony: IDEs still *showed* beautifully precise types. We could *see* the system we wanted—TypeScript just refused to *build* it at scale.
+
+## The two hours that mattered
+I didn't approach it as “how do I fix the error?” I approached it as “why is the compiler suffocating?” The Octokit types lean hard on conditional branching. We were layering more generics and conditional indexing on top of that. Every access like `WebhookEvent<T>["payload"]` was an invitation for the compiler to expand the entire union space to prove it was safe.
+
+So I stopped asking it to prove anything recursive. Instead: precompute. Build a mapped shape that *already* pairs each event key with its resolved event object. Then all future lookups become trivial indexed access, not a fresh inference marathon.
+
+It felt almost too simple. Replace “derive payload through conditional gymnastics every time” with “treat it like a record: key → event → payload.” Add a curated, narrower union on the plugin side for snappy autocomplete, leave the kernel with the strict internal surface, and give ourselves an escape hatch `(string & {})` for future events.
+
+## The moment of skepticism
+When I opened the PR the first reaction was cautious: if the whole team had already tried, what was *different* here? The answer wasn't clever syntax—it was reshaping the problem so TypeScript had less work. A complexity wall rarely yields to *more* inference; it yields to *less*.
+
+## Refinement in review
+The review trimmed my initial two-generic version down to a single generic parameter. Cleaner, same guarantees, smaller surface. That collaboration made the solution sturdier; it wasn't a magic trick, it became shared architecture.
+
+## Why this mattered beyond one error
+This union sits at the heart of kernel plugin interoperability. If we had caved and sprayed type guards everywhere, every new event would have come with more ceremony. If we'd relaxed types to “string” we'd have lost the safety that gives you confident automation. Instead we kept both: safety *and* fast feedback.
+
+It also reinforced something I'd only suspected during the earlier enum generation work: type-level design is architecture. Sometimes the fastest path to reliability isn't another abstraction—it's subtracting the invisible cost the compiler pays on every generic edge.
+
+## Looking back
+Now the pattern feels obvious: trade inference depth for explicit mapping; separate strict internal surfaces from curated external ones. Back then it felt like defusing a quiet bomb that had sat blinking for too long.
+
+And yes—it still makes me grin that a couple focused hours after months of collective frustration ended in a diff that barely touches runtime code. That *is* the point. The best kind of kernel change is the one that makes everything calmer without anyone noticing at execution.
+
+## A trimmed illustration
+Not the whole file—just the essence of the shift:
+
+```ts
+export type SupportedEventsU =
+  | "issues.labeled" | "issues.unlabeled" | "label.edited"
+  | "issues.reopened" | "push" | "issue_comment.created"
+  | (string & {});
+
+export type SupportedEvents = {
+  [K in SupportedEventsU]: K extends WebhookEventName ? WebhookEvent<K> : never;
+};
+
+// Later: context uses SupportedEvents[T]["payload"] via a single generic.
+```
+The rest is just indexing—no ceremony, no recursion cascade.
+
+## What changed afterward
+Builds stopped complaining. Plugin authors kept autocomplete. Kernel code remained surgical. And I internalized a lesson I now default to: when TypeScript waves the “too complex” flag, redesign the *shape*—don't brute force the edges.
+
+The breakthrough wasn't a new trick—it was subtraction. I'd spent months sharpening advanced type skills, but what fixed this wasn't pushing TypeScript harder; it was removing the places it had to think. That reshaped how I now approach type friction: if the compiler is sweating, change the topology, not the syntax.
+
+And just like the earlier enum work, this became another confidence checkpoint: not luck, not a fluke—repeatable pattern recognition. A second structural change to the kernel's type system that stuck.
+
+---
+
+*The gap between “impossible” and “obvious” is often a single reframing.*
+
+### See also
+- Previous chapter — [Type-safe webhook events](/writing/type-safe-webhook-events)
+- Case study (structured evidence) — [TS union too complex case study](/work/ts-union-too-complex)
+- Earlier type system shift — [Dynamic webhook enum case study](/work/ts-dynamic-webhook-enum)

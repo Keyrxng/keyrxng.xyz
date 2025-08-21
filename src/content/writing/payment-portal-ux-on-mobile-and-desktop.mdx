@@ -1,0 +1,77 @@
+---
+title: "Payment portal UX: mobile guidance, clearer states"
+publishedAt: "2025-06-18"
+summary: "Detect non-Web3 mobile, show actionable toasts, fix status messaging, and fetch from the fastest RPC to reduce flicker."
+tags: ["UX", "Web3", "Mobile"]
+readingTime: "4 min"
+relatedWorkSlug: payment-portal-ux
+---
+> Note: UX remediation; deterministic env + rotation patterns: [reliability playbook](/writing/reliability-playbook).
+
+Users don't debug your provider. They just bounce if the UI sits in a spinner state. When I took over maintainership of the payment portal I discovered a silent cliff: mobile visitors without an injected provider (most of them) saw… nothing. No error, no instruction, no remediation path. Desktop worked “well enough,” masking the problem. Mobile—an increasingly common demo surface for investors—was a dead end.
+
+This is the story of turning that dead zone into a guided path, fixing misleading status states, and shaving off UI flicker by choosing the fastest healthy RPC—without rewriting the world.
+
+## The silent failure
+The prior logic assumed `window.ethereum` always existed. On normal mobile browsers it doesn't, so capability checks short-circuited into dangling promises and partial DOM scaffolds. People thought the site was “down on mobile.” Internally, that hurt credibility; externally, it was an invisible accessibility gap. This portal wasn't just a product surface—it was literally how core contributors and bounty hunters collected rewards (and how investors were shown the ecosystem). Reliability and clarity mattered.
+
+## First principle: guide, don't blame
+I didn't want a generic “Provider missing” modal. That's scolding. Instead: a persistent (non-expiring) toast written in human language: “Use a mobile-friendly Web3 browser (e.g., MetaMask) to claim this reward.” Concrete, actionable, specific. Desktop with no provider? Similar guidance plus hiding every claim affordance so users didn't click dead buttons.
+
+```ts
+if (error?.message?.includes("missing provider")) {
+  const mq = window.matchMedia("(max-width: 768px)");
+  if (mq.matches) {
+    toaster.create("warning", "Use a mobile-friendly Web3 browser (e.g., MetaMask) to claim this reward", Infinity);
+  } else if (!window.ethereum) {
+    toaster.create("warning", "Use a Web3-enabled browser or wallet extension to claim.", Infinity);
+    buttonController.hideAll();
+  }
+}
+```
+
+## Second principle: state should feel honest
+Claims had a “pending” label styled like success. Users hesitated: is it done? Should I click again? I mapped the lifecycle explicitly: idle → requesting signature → mining → complete (stable green) or error (red with retention). Only after confirmation do we swap copy to “Claim Complete.” Errors remain long enough for screenshots/support; success stays calm.
+
+## Third principle: remove false affordances
+Pagination controls rendered before knowing if multiple rewards existed, then disappeared. Claim buttons flashed enabled then disabled while allowance loaded. These micro-flickers erode trust. I gated rendering: pagination only appears when rewards.length > 1; buttons mount hidden until prerequisite data resolves. Perceived polish improved disproportionally to code size.
+
+## Fourth principle: latency is UX
+Slow or unhealthy RPCs meant extra spinner time and occasional flicker when a late provider “won.” I integrated my `@ubiquity-dao/rpc-handler` package to race endpoints and pick the fastest healthy URL once, then reuse it. No complex caching strategy—just a single early optimization that cut visible jank. (A later experiment—suggesting users replace their wallet's own RPC if slow—worked technically but was culturally too intrusive; it was removed after I transitioned ownership. Lesson: just because you can optimize doesn't mean you should edit user wallet config.)
+
+## CI: the invisible enabler
+Cypress runs flaked from Anvil not being ready or accounts unfunded, yielding “nonce too low.” A tiny 30-iteration curl loop + serialized funding step stabilized the suite. That reliability let me iterate on UX without wondering whether failures were infrastructure noise.
+
+## Edge cases I cared about
+- Late injection (extensions that inject after DOM ready) → small retry window before declaring missing provider.
+- Desktop no-provider scenario → hide claim affordances entirely.
+- Network ID unset → explicit throw instead of silent fallback.
+- Provider URL validation → guard against undefined connection surfaces.
+
+## What changed (qualitative signals)
+- Mobile “infinite load” complaints vanished; instead we saw screenshots of the guidance toast (users self-served).
+- Support questions about “is it actually claimed?” dropped after status copy/style alignment.
+- Manual timing showed fewer UI flickers when claims mounted (formal metrics came later in the performance initiative).
+- CI reruns for this suite dropped to near zero—no more early morning detective work on race conditions.
+
+## Lessons I'm keeping
+- A missing capability is a chance to educate, not to shrug.
+- Precise internal enums prevent ambiguous external copy.
+- Micro de-flickers (visibility gating) compound into perceived craftsmanship.
+- Shipping the smallest diff that meaningfully improves user certainty beats broad speculative refactors—especially under hot-fix pressure.
+
+## Things I wouldn't repeat
+The experimental wallet RPC “offer to swap” flow—despite solving real latency pain—felt too invasive for Web3 culture. Technical success; product misfire. Guardrails aren't just code—they're social expectations.
+
+---
+
+*Guided, honest states beat silent spinners—clarity is the fastest fix.*
+
+## References
+- Case study — [/work/payment-portal-ux](/work/payment-portal-ux)
+- PRs — [#213](https://github.com/ubiquity/pay.ubq.fi/pull/213)/[#204](https://github.com/ubiquity/pay.ubq.fi/pull/204)/[#156](https://github.com/ubiquity/pay.ubq.fi/pull/156)/[#143](https://github.com/ubiquity/pay.ubq.fi/pull/143)/[#221](https://github.com/ubiquity/pay.ubq.fi/pull/221)
+
+### See also
+- Performance write-up — [Sub-second payment portal](/writing/sub-second-payment-portal)
+- Case study — [Payment portal UX case study](/work/payment-portal-ux)
+- Glossary — [Glossary](/writing/_glossary)

@@ -1,0 +1,83 @@
+---
+title: "Deep in cryptography (and three rewrites that broke momentum)"
+publishedAt: "2025-06-26"
+summary: "How I went from payment portal optimization to reverse-engineering libsodium, discovered an easter egg in build output, and learned that technical mastery means nothing when management has no direction."
+tags: ["Cryptography", "Management", "Burnout", "TweetNaCl", "libsodium", "Reality Check"]
+readingTime: "8 min"
+relatedWorkSlug: permit-generation
+---
+> **Disclaimer:** Personal reflection on technical iteration and direction churn; intent is to surface durable lessons, not to assign blame.
+
+> Note: Iteration + platform direction case study; emphasizes cryptographic adaptation and scope management lessons.
+
+How did I end up deeply immersed in keypair cryptography, reverse-engineering libsodium, and hunting through build outputs for easter eggs? 
+
+It started so innocently. I was crushing it on the payment portal—load times down from 12+ seconds to sub-second, building the RPC infrastructure that would power the entire ecosystem. My RPC handler was becoming ubiquitous across every Web3 integration. I was hitting personal bests, feeling unstoppable.
+
+Then I took on permit generation.
+
+## The simple task that wasn't
+
+The requirements seemed straightforward: port the V1 permit module to run on Cloudflare Workers. Standard stuff for UbiquityOS kernel plugins—unless it was CPU-heavy, then GitHub Actions would handle it. We hadn't cracked cold starts yet, so workflows were painfully slow with terrible development feedback loops.
+
+The team had been using libsodium to handle partner credential encryption. The module worked fine as a GitHub Action, but moving it to Workers? That's where things got interesting.
+
+Libsodium wouldn't decrypt in a Worker environment. No matter what I tried—different packages, various configurations, native versions, wrapper versions—nothing worked. The `await sodium.ready` promise just hung indefinitely.
+
+I hadn't taken on a bounty I couldn't deliver. I wasn't about to start now.
+
+## Down the cryptographic rabbit hole
+
+Enter TweetNaCl—a compact NaCl port with overlapping authorship and Worker-friendly constraints.
+
+The catch? TweetNaCl was less "handholdy" than libsodium. Where libsodium handled nonce management under the hood, TweetNaCl required manual handling. I needed to understand how libsodium's box seal actually worked.
+
+So I worked backwards. Deep into the libsodium source, tracing the encryption steps, understanding nonce derivation. The ephemeral public key, the recipient's public key, blake2b hashing to create the nonce—piece by piece, I rebuilt their approach.
+
+```typescript
+function deriveNonce(epk: Uint8Array, recipientPubKey: Uint8Array) {
+  return blake2b(24).update(epk).update(recipientPubKey).digest();
+}
+```
+
+It was during this deep dive that I found it—buried in the libsodium build output, a simple check verifying module access that used the term "balls." I was so deep in the cryptographic weeds that finding this easter egg felt like a victory. A moment of levity in what had become an unexpectedly complex technical challenge.
+
+## The first implementation (that worked)
+
+After the compatibility layer clicked: Permit2 for ERC20 tokens, custom signatures for ERC721 with metadata, X25519 encryption for private keys, comprehensive tests with mocked blockchain interactions.
+
+The Worker implementation was clean, secure, and worked perfectly. Review feedback was positive. I was proud of the cryptographic problem-solving and the elegant solution.
+
+Then came the decision: "It should exist as an action rather than a worker."
+
+Wait, what? I'd just spent weeks solving the Workers compatibility challenge. The code worked. The architecture was sound. But apparently, the direction had changed.
+
+Fine. Convert to GitHub Action. Different deployment target, same core logic. Delivered.
+
+## Direction churn (pointer)
+
+Multiple reconversions (Worker ↔ Action ↔ package ↔ Action  ↔ Worker) exemplify unfrozen scope; full pattern analyzed in [organizational dynamics arc](/writing/organizational-dynamics-arc).
+
+## Observations from the cycle
+
+**Technical mastery doesn't shield you from direction churn.** Rewrites still occur if scope ownership is unclear; future mitigation is earlier freeze articulation.
+
+**Scope creep is a symptom.** Rewrites and expanding edge cases reflect upstream ambiguity.
+
+**Reputation has limits.** Sustained ambiguity erodes even strong contributor standing.
+
+**Know inflection points.** Repeated direction resets without clarified rationale signal time to reassess investment.
+
+## Aftermath
+
+The most painful part? I was genuinely proud of the cryptographic work. Understanding libsodium's internals, porting to TweetNaCl, solving the Workers compatibility challenge—it was some of the most interesting technical work I'd done.
+
+Technical excellence atop instability yields diminishing returns.
+
+---
+
+*Sometimes the most valuable projects teach you when to stop building.*
+
+### See also
+- Case study — [/work/permit-generation](/work/permit-generation)
+- Previous chapter — [The day I solved what the senior engineer couldn't](/writing/type-safe-webhook-events)

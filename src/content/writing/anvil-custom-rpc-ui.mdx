@@ -1,0 +1,98 @@
+---
+title: "My first commit to the internet (and the 15 minutes of terror before hitting push)"
+publishedAt: "2025-05-11"
+summary: "The story of my first open source contribution: building an Anvil debugging UI while terrified of peer review, and how one small PR became the foundation of a two-year journey into Web3."
+tags: ["First Contribution", "OSS", "Anxiety", "Learning", "Web3"]
+readingTime: "7 min"
+relatedWorkSlug: anvil-rpc-ui
+---
+
+> Note: First open-source contribution narrative; early confidence arc compressed in [origin & strategy](/writing/origin-and-strategy). See [Glossary](/writing/_glossary) for term references.
+
+I spent fifteen minutes staring at the `git push` command.
+
+Less than a year into self-learning software development, this was my first real contribution to open source. My first pull request. My first time putting code in front of strangers who knew what they were doing. The cursor blinked mockingly in my terminal while I triple-checked everything one more time.
+
+What if the code was terrible? What if I'd misunderstood the requirements? What if they laughed at my implementation and I became one of those GitHub horror stories developers share over coffee?
+
+Finally, I closed my eyes and hit enter.
+
+## The task that started everything
+
+The issue was straightforward enough: integrate into their staking UI, eight of Anvil's custom RPC methods. Developers were stuck in the CLI for testing blockchain scenarios—impersonating accounts, tweaking balances, dumping state. A simple drawer component with these methods neatly listed with I/O feedback would speed up development, PR reviews and make testing less painful.
+
+I knew Foundry and Anvil from the Solidity side, but this was frontend work, _Web3_. React, TypeScript, Ethers, JSON-RPC calls. I was comfortable enough with the pieces, but putting them together into something production-worthy? That was uncharted territory.
+
+Still, I needed this. It was my first "internet money"—my first paid gig with a credible and legit startup anyway. The freelance gig market was how I was paying bills while grinding through tutorials and building side projects.
+
+## Building in the dark
+
+I approached it like I approached everything back then, using traits learned from my skilled-trade: methodically, obsessively, with way too much research and planning for what should have been a simple task.
+
+The architecture emerged from necessity. A config file (`method-configs.ts`) as the single source of truth for all 33+ (initiative or disregarding the original spec? You decide.) RPC methods. Typed parameter conversion because blockchain development doesn't forgive sloppy type handling. Production guards because nobody wants debug tools leaking into main.
+
+```ts
+export const methodConfigs = [
+  {
+    name: "Impersonate Account",
+    methodName: "anvil_impersonateAccount", 
+    params: [{ name: "address", type: "string" }],
+    type: "user"
+  },
+  // ...32 more methods
+];
+```
+
+Each method got its own UI slot, with proper type conversion and error handling with everything hidden behind a development flag so it couldn't accidentally ship to production.
+
+Simple, but it worked. And working was all that mattered for my first contribution.
+
+## The fifteen-minute paralysis
+
+When the code was ready, I hit my first wall: actually submitting it.
+
+I'd committed locally. Written the PR description. Double-checked the issue requirements. But pushing meant exposure. Real developers would see my code. They'd have opinions. They might reject it. I mean, these dudes were _real_ engineers.
+
+Fifteen minutes of cursor-blinking terror while I convinced myself to be brave.
+
+## The review that changed everything
+
+Three days and 27 comments later, I had my answer: they didn't laugh.
+
+Instead, I got thoughtful feedback about edge cases I'd missed, discussions about why they were sticking with Ethers over Viem (despite my suggestion), and some detailed explanations of Anvil's quirks to avoid QA confusion:
+
+> "We can only send transactions from either the 10 built-in accounts or ones we have the private key for. We can't sign transactions from impersonated accounts. Sending from one of the built-in accounts automatically signs the transaction under the hood."
+
+They treated me like a peer. Asked my opinion on technical tradeoffs. Discussed the roadmap for future improvements. It was the first time in my development journey that I felt like I belonged.
+
+## The unexpected race
+
+A few weeks after my PR merged, [Rivet](https://rivet.cloud/) launched—essentially the same debugging UI I'd built, but cleaner, faster, and with WebSocket support instead of HTTP polling. Their implementation was objectively better.
+
+For a moment, I panicked. Had I wasted my time building something that would immediately become obsolete?
+
+But the team stuck with my solution. The onboarding complexity of adding another tool outweighed the performance benefits. Sometimes "good enough and already integrated" beats "technically superior but requires setup."
+
+It was my first lesson in software pragmatism: the best code doesn't always win. Context matters more than perfection.
+
+## Aftermath (compressed)
+Unlocked ongoing contributions → later RPC handler & payment portal stewardship (see [origin & strategy](/writing/origin-and-strategy)).
+
+## Reflections
+
+**Your first contribution doesn't have to be perfect.** It has to be complete, thoughtful, and ready for feedback. The community will help you make it better.
+
+**Production pragmatism beats technical purity.** Sometimes the solution that integrates cleanly with existing systems wins over the one with better performance.
+
+**Anxiety is normal, but it's not actionable.** The only way through is to ship and learn from the response.
+
+**Small wins compound.** That debugging UI led to bigger projects, which led to core team membership, which led to owning critical infrastructure.
+
+The hardest part wasn't writing the code—it was believing I deserved to contribute in the first place. Once I got past that, everything else was just engineering.
+
+---
+
+*Two years later, when I eventually stepped back from the startup grind, I realized that nervous kid staring at the terminal had been onto something. The work really was better when it started from play.*
+
+### See also
+- Next chapter — [Production-Safe Smart Contract UUPS Transparent Proxy Upgrades](/writing/production-safe-uups)

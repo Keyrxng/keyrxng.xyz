@@ -1,0 +1,47 @@
+---
+title: "Origin & Strategy (Canonical)"
+publishedAt: "2025-07-08"
+summary: "Compressed early arc: first OSS push, upgradeability stretch, strategic lane targeting, and guiding principles (removes repetition elsewhere)."
+readingTime: "4 min"
+tags: ["Meta", "Strategy", "Origin"]
+---
+
+> Canonical reference for the early journey. Other posts link here instead of re‑telling the same arc.
+
+## 1. First exposure (blink before push)
+Early anxiety before the first open source PR (Anvil RPC UI) set a pattern: over-prepare privately, ship a coherent slice, treat review as collaborative not adversarial.
+
+## 2. Stretch task: UUPS upgradeability
+26 days later: migrating seven core contracts to UUPS (initializer migration, storage slot preservation, `_disableInitializers()`, audit-safe authorization). External audit surfaced zero findings—confidence shifted from "can submit" to "can be trusted under economic stakes".
+
+## 3. Intentional lane expansion
+Targeted three surfaces to maximize cross-surface leverage:
+- Payment portal (latency + funds flow UX)
+- Directory / task aggregation (data & workflow visibility)
+- Kernel / automation (types, policy, context shaping)
+
+## 4. Execution principles
+| Principle | Short form |
+|-----------|------------|
+| Subtractive design | Remove unnecessary inference / calls / tokens first |
+| Bounded uncertainty | Depth caps, timeouts, explicit exit criteria, token budgets |
+| User never pays | Transparent retries / rotation; absorb transient failures |
+| Deterministic envs | Fork + idempotent funding + stubs + loud logs |
+| Thin slice iterate | Ship minimal viable reliability slice then harden |
+| Captured rationale | Tiny ADR notes to prevent retroactive scope creep |
+
+## 5. Pattern seeds (later reused)
+- Type subtraction → union simplification & dynamic webhook enum mapping.
+- Latency ranking → RPC handler & faster portal bootstrap.
+- Token budgeting mindset → LLM context engineering & temporal resistance work.
+
+## 6. Mentor influence (compressed)
+Concise, surgical reviews reinforced prioritizing working slices over speculative rewrites.
+
+---
+*Foundational arc distilled—other essays link here instead of retelling.*
+
+### See also
+- [My first commit to the internet](/writing/anvil-custom-rpc-ui)
+- [The merge that changed everything](/writing/production-safe-uups)
+- [The perfect solution that never shipped](/writing/gasless-onboarding)

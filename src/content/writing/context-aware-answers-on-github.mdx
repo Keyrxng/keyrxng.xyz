@@ -1,0 +1,78 @@
+---
+title: "Bringing an AI coworker onto GitHub (before everyone else tried)"
+publishedAt: "2025-06-30"
+summary: "I rewrote the same plugin across kernel versions just to prove a GitHub thread could think in context—long before 'context engineering' became a buzzword."
+tags: ["GitHub", "LLM", "Workers", "Context", "Persistence"]
+readingTime: "8 min"
+relatedWorkSlug: command-ask
+---
+
+> Note: Context engineering evolution; focuses on constraint shaping, not credit assignment.
+
+It started as stubborn curiosity: could I make a GitHub issue feel like it had a thinking participant—one that actually *read* what came before—without timing out, hallucinating, or burning the entire token window on noise?
+
+Back then ("AI years" ago, which is to say months) most GitHub “AI” demos were surface tricks: a comment trigger, a one-shot prompt, maybe a gist summary. Impressive wrappers; shallow memory. I wanted something different: a worker that followed the conversational thread the way a diligent human contributor would—chasing referenced issues, PRs, diffs—then answering in-line like it had patiently absorbed the project's recent history.
+
+## Version one: naïve hunger for context
+The first build was for Ubiquibot (Ubiquity OS Kernel V1). I fed it everything I could grab: issue body, all comments, linked PR, a diff slice or two. It worked—until it didn't. Big threads choked the window; answers got jittery because the model was digesting a banquet it couldn't finish. The early prompt looked clever on paper; in practice half of its allotted space was consumed before the model even *saw* the actual question.
+
+I learned fast: more context isn't better—*engineered* context is. But at that point management was still romantic about complete fidelity.
+
+## Version two: the rewrite nobody sees
+The Ubiquity OS kernel (V2) landed and broke assumptions: webhook shapes, execution boundaries, subtle payload changes. I didn't patch—I rewrote. If you want a system to live, treat platform shifts as a chance to reduce hidden complexity. I collapsed brittle glue code, formalized event handling, and reshaped the ingestion so it could swap between full fetch and a depth-bounded crawl.
+
+That's when the recursion debate started.
+
+## Depth guard (pointer)
+Recursion / depth-cap debate summarized; technical budgeting formalized in [reliability playbook](/writing/reliability-playbook) & context-engineering notes.
+
+## The quiet grind: QA as credibility
+Weeks of manual QA followed. Synthetic threads. Linked issue chains. PRs with intentionally bloated diffs. Noise injection (bot comments + repeated quote blocks) to ensure filters held. I measured—not with dashboards, but with instinct: “Does this answer feel like it *understood*?” When an answer drifted, I moved the question earlier. When drift persisted, I shaved redundant context blocks. When trimming broke grounding, I restored a single missing sentence. Iteration at the sentence level beats rewriting prompts from scratch.
+
+## The shape that finally stuck
+The final pattern looked almost banal:
+1. System rails (tone, brevity, citation hints)
+2. Ordered, depth-bounded context slices (normalized, deduped)
+3. The *question*, promoted aggressively
+4. The answer slot
+
+## The emotional part nobody writes about
+I was determined to be “the person who brought a chatbot *properly* onto GitHub” in that ecosystem. That's ego, sure—but also craft. I'd already tasted the TypeScript win of solving blockers others had burned time on. This was different: not a clever type trick, but an emerging architectural instinct—treat LLMs like resource-bounded search participants, not infinite attention spans.
+
+Watching later iterations adjust features without sustained maintenance discipline was instructive. Some new ideas were solid; constraint hygiene (depth, ordering, budgeting) remained the durable core.
+
+## A tiny code shard
+Just enough to show the spine—not the whole body:
+
+```ts
+const fetchLinkedContext = async (url: string, depth = 0): Promise<Block[]> => {
+  if (depth >= MAX_DEPTH) return [];
+  const issue = await octokit.issues.get(parse(url));
+  const links = extractGitHubUrls(issue.data.body);
+  const children = await Promise.all(links.map(l => fetchLinkedContext(l, depth + 1)));
+  return [shape(issue.data), ...children.flat()];
+};
+```
+
+The real value wasn't this recursion—it was knowing *when to stop*.
+
+## What changed for me
+This was my on-ramp to building AI systems instead of just *using* them. Since then I've built stranger things—an incremental browser game with agents in the game loop, semantic personnel profiling, richer kernel plugins—but the mental model was born here: sculpt the *shape* of attention. Don't ask the model to lift more—reduce what it must carry.
+
+## Looking back
+If you glance now it just looks like another “context aware” bot in a world saturated with them. But at the time, in that codebase, it was an ideological shift: read the links; respect the window; answer like a peer.
+
+And yes—I rewrote it multiple times mostly so I could sleep at night knowing the *idea* was sound.
+
+---
+
+*Good context engineering isn't dumping everything in—it's deciding what the model never needs to read.*
+
+### See also
+- Previous chapter — [The perfect solution that never shipped](/writing/gasless-onboarding)
+- Next chapter — [The day I solved what the senior engineer couldn't](/writing/type-safe-webhook-events)
+- Case study — [/work/command-ask](/work/command-ask)
+
+
+
+

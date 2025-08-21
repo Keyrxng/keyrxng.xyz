@@ -1,0 +1,92 @@
+---
+title: "The merge that changed everything (and the three targets I set in my sights)"
+publishedAt: "2025-05-19"
+summary: "Fresh off my first successful PR, I tackled UUPS upgradeability for a multi-million dollar protocol. This is the story of building confidence, surviving security audits, and the strategic plan that would make me ubiquitous."
+tags: ["UUPS", "Solidity", "Strategy", "Growth"]
+readingTime: "8 min"
+relatedWorkSlug: uups-upgradeability
+---
+
+> Note: Early stretch bounty; origin & strategy moved to [origin & strategy](/writing/origin-and-strategy). See [Glossary](/writing/_glossary) for defined terms.
+
+I was flying high. One successful PR merged, 33 Anvil methods deployed, and suddenly I had something I'd never felt before in my software career: confidence.
+
+The bounty board beckoned. Seven core smart contracts needed UUPS upgradeability. The existing diamond proxy couldn't handle them due to function signature clashes, and the protocol needed an upgrade path that wouldn't break a multi-million dollar TVL.
+
+I knew what this represented: my chance to prove the first PR wasn't a fluke.
+
+## Confidence inflection (summary)
+
+Twenty-six days after my first contribution, I was a different developer. Still green, still learning, but no longer paralyzed by the thought of professional code review. When I saw the UUPS bounty, I didn't spend fifteen minutes staring at the screen—I got to work.
+
+But here's the thing about confidence: it can make you overreach. And UUPS upgradeability? That was definitely an overreach for someone who'd been coding professionally for less than a year.
+
+Still, I'd learned something crucial from my Anvil experience: complete the work in private first, then submit when you're confident it works as to not waste reviewer time and energy. So I cloned the repo, set up a local environment, and started migrating seven core contracts to OpenZeppelin's Universal Upgradeable Proxy Standard.
+
+The technical challenges were real. Constructor-to-initializer migration. Storage slot preservation. Admin authorization gates. ERC1967Proxy deployment scripts. Delegatecall safety with `_msgSender()`. Comprehensive Foundry tests that proved upgrade flows, authorization checks, and initialization guards.
+
+Each piece was a puzzle I had to solve while ensuring I didn't break a protocol that people were trusting with serious money.
+
+```solidity
+contract UbiquityCreditToken is ERC20Ubiquity {
+  constructor() {
+    _disableInitializers(); // The magic line that prevents foot-guns
+  }
+
+  function initialize(address manager) public initializer {
+    __ERC20Ubiquity_init(manager, "Ubiquity Credit", "uCR");
+  }
+
+  function _authorizeUpgrade(address newImplementation)
+    internal override onlyAdmin {}
+}
+```
+
+Simple pattern, but getting it right across seven contracts while maintaining compatibility with the existing diamond proxy? That was the challenge.
+
+## The collaboration that mattered
+
+Three days into the review process, something unexpected happened. Rndquu—the lead maintainer who'd been guiding the project—made a PR against my PR.
+
+"@Keyrxng pls merge https://github.com/Keyrxng/ubiquity-dollar/pull/5"
+
+I stared at the message. Just hit merge? On production code? For a protocol with millions in TVL?
+
+"Just hit merge?😂" I replied, because honestly, I was terrified.
+
+But that exchange taught me something about trust. Rndquu had reviewed my core implementation, verified the functionality, and was now cleaning up semantics and style. He wasn't taking over—he was collaborating. He was treating me like a peer capable of merging to production.
+
+> "The original spec is implemented, core contracts are upgradeable. This PR still needs some refactoring (small changes in naming) but I will update it in a separate PR since those changes are not really connected with the UUPS."
+
+Translation: the hard part was done correctly. Everything else was just polish.
+
+I hit merge and soon after my own PR was merged too. Another feather in the cap.
+
+## The audit that validated everything
+
+A few weeks later, Sherlock.xyz conducted a security audit of the entire protocol. External auditors, substantial bounties for finding vulnerabilities, the kind of professional review that makes or breaks protocols.
+
+I held my breath.
+
+Zero findings. Not a single issue with the UUPS implementation. Not one vulnerability in the upgrade patterns, authorization gates, or initialization guards. The code I'd written—as a developer who'd been coding professionally for less than a year—had survived professional security scrutiny.
+
+That moment changed everything. It wasn't just that the code worked; it was that it worked *securely* in a high-stakes environment. I wasn't just someone who could complete bounties—I was someone who could ship production-safe code to protocols handling real money.
+
+## Strategy pointer
+Lane targeting rationale consolidated in [origin & strategy](/writing/origin-and-strategy).
+
+## What changed
+
+The UUPS implementation wasn't just about upgradeability patterns or OpenZeppelin contracts. It was about crossing a threshold—from nervous beginner to trusted contributor. From someone who submitted code hoping it would work to someone who shipped code knowing it would survive security audits.
+
+That confidence would carry me through the next phase of my journey at Ubiquity. The phase where I stopped reacting to opportunities and started creating them. Where I moved from completing bounties to owning entire components of the ecosystem.
+
+The nervous kid who spent fifteen minutes staring at `git push` was gone. In his place was someone ready to become ubiquitous.
+
+---
+
+*Sometimes the most important code you write isn't the smartest or the most elegant—it's the code that proves to yourself and others that you belong.*
+
+### See also
+- Next chapter — [How I built a production-grade gasless onboarding system](/writing/gasless-onboarding)
+- Previous chapter — [My first commit to the internet](/writing/anvil-custom-rpc-ui)

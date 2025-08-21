@@ -1,0 +1,96 @@
+---
+title: "Sub-second payment portal: fewer RPCs, faster feedback"
+publishedAt: "2025-06-22"
+summary: "Consolidate the provider, trim calls, render optimistically, and keep CI honest."
+tags: ["Performance", "Web3", "UX"]
+readingTime: "5 min"
+relatedWorkSlug: payment-portal-performance
+---
+If every RPC takes ~400ms, 40 calls is a non-starter. These wins actually began months earlier (Feb 2024) when I first turned from “make it work everywhere” to “make it fast.” This is the story of collapsing messy control flow, shaving network requests without breaking investor demos, and resisting the temptation to refactor for refactor's sake.
+
+## The moment I started counting
+After stabilizing mobile & UX states, I opened DevTools “just to look” and immediately wished I hadn't: a parade of duplicate chainId calls, repeated blockNumber lookups, allowance & balance queries triggered by circular event handlers, plus asset bloat. The UI *looked* simple; the control flow feeding it wasn't. ~40 network requests before interactivity on a chain where each call cost ~400ms latency. Do the math: users stared at a semi-constructed interface for multiple seconds (12.5s on a bad day). Unacceptable for something shown live to investors *and* used to pay contributors.
+
+## Philosophy: momentum > purity
+I had no appetite for a grand re-architecture. Early in a startup, “Let's rebuild this” is often the siren song of stalled velocity. My principle: change only what users *feel*. Users feel latency, flicker, inconsistent buttons. They don't care if it's a `<table>` or a flexbox `<div>`. So I outlined constraints:
+- No redesign.
+- No new framework.
+- No invasive renames.
+- Only touch logic that directly reduces wait or flicker.
+
+## Naive advantage
+This was my first framework-less JS/TS codebase. I hadn't internalized patterns people argue about on Twitter. That ignorance meant I wasn't dogmatic—I read what the code *actually* did. Without preconceptions I spotted places where a future-minded engineer had over-abstracted, causing the same network detection & allowance retrieval to cascade through multiple entry points.
+
+## The real culprit: control flow sprawl
+Several functions both *produced* and *consumed* shared state, calling each other in subtly different permutations. The result: redundant external calls and internal recomputation. A simplified before snapshot:
+
+```ts
+// BEFORE (conceptual)
+async function init() {
+  await detectNetwork(); // calls provider.getNetwork
+  await loadPermit();
+  await hydrateTreasury(); // calls provider.getNetwork again indirectly
+  maybeRecheck(); // triggers detectNetwork again on certain flags
+}
+
+async function maybeRecheck() {
+  if (needsRecheck) {
+    await detectNetwork(); // third time
+    await hydrateTreasury();
+  }
+}
+```
+
+After collapsing responsibilities, a single orchestrator captured network detection once and passed a *resolved* provider downward:
+
+```ts
+// AFTER (conceptual)
+async function bootstrap() {
+  const provider = await getOptimalProvider(networkId);
+  const permit = await loadPermit();
+  renderStatic(permit); // immediate
+  void fetchTreasuryAsync(provider, permit); // non-blocking
+}
+```
+
+By making network detection a first-class step and forbidding downstream helpers from re-detecting, I erased a third of early latency.
+
+## Not yet the RPC handler
+This predates the ecosystem-wide `@ubiquity-dao/rpc-handler`. At this stage I didn't race multiple endpoints with health scoring; I just *stopped* constructing new providers ad hoc. Centralization alone killed a category of duplicate `noNetwork` edge cases and reduced error noise in logs (“invisible win”). The later handler formalized fastest-healthy selection across apps—but the seed was here: treating provider creation like a scarce operation.
+
+## Cheap wins that felt almost illegal
+1. **Hardcode stable token metadata**: Known symbols/decimals don't need live reads. Six to seven contract calls gone. “Impure”? Maybe. Valuable? Absolutely.
+2. **Split static vs dynamic render**: Show owner + static permit fields instantly; fetch balance/allowance after. Users perceive “it loaded” even if numbers change a second later.
+3. **Inline removal of dead branches**: Deleted unused feature toggles that still fired network probes.
+4. **Asset pruning & minification**: Half the bundle size came from unused CSS plus non-minified vendor bits. Trimming dropped ~8.2MB → ~3.9MB and shrank parse/exec time.
+5. **CI wait loop**: A 20-line bounded poll for Anvil readiness + serial funding removed intermittent flakes so performance diffs were trustworthy.
+
+## Measuring (imperfect but directional)
+- Requests: ~40 → 14-18 (environment dependent)
+- Interactive latency: 6–7s (spikes to 12.5s) → 1.8–3s initial; Sub 1s perceived UI (optimistic path) after final pass
+- Bundle: ~8.2MB → ~3.9MB
+
+I logged rough timings via `performance.now()` around provider & treasury fetch segments—enough to confirm direction without building a metrics pipeline prematurely.
+
+## Trade-offs I accepted
+- Hardcoded metadata would require manual update if a token changed decimals (it won't).
+- Optimistic rendering risks a brief mismatch if a balance is zero—but waiting costs more trust than a momentary “Loading…” swap.
+- Keeping legacy naming/structure feels messy but shielded reviewer cognition; diffs stayed small and merged faster.
+
+## Why not a bigger refactor?
+Because big refactors often *introduce* latency regressions while chasing architectural elegance that users never see. I wanted a bias toward shipped deltas that moved metrics. Later, when credibility was banked, deeper systemic changes (like the RPC handler) were easier to justify.
+
+## The cultural lesson
+Incoming engineers sometimes start by listing what they'd rip out. I learned that quietly removing 26 redundant calls buys more political capital than a manifesto about theoretical purity. Performance work is product work; you trade complexity budget for user-visible speed.
+
+## What actually mattered
+None of the users ever said “great job reducing redundant chainId calls.” They just stopped asking if the site was broken. Investors saw a page appear instantly instead of a spinner marathon. Contributors claimed rewards without wondering whether to refresh. That's the whole point: invisible engineering that lowers cognitive friction.
+
+## In one breath
+Single provider. Hardcoded stable metadata. Optimistic first paint. Deferred treasury. Asset diet. CI sanity. Ship small; measure direction; keep moving.
+
+---
+
+### See also
+- Case study — [Payment portal performance](/work/payment-portal-performance)
+- Complementary UX write-up — [Payment portal UX](/writing/payment-portal-ux-on-mobile-and-desktop)

@@ -1,0 +1,63 @@
+---
+title: "Hybrid Telegram micro-kernel: architecture vs process drag"
+publishedAt: "2025-05-03"
+summary: "Ported a stalled V1 Telegram bot to the V2 kernel with a first-of-its-kind hybrid plugin architecture—and saw process friction dilute momentum."
+tags: ["Telegram", "Hybrid Architecture", "Cloudflare Workers", "GitHub Actions", "DX", "Org"]
+readingTime: "7 min"
+relatedWorkSlug: telegram-micro-kernel
+---
+
+> Note: Architecture + process retrospective; intent is to surface reusable coordination lessons, not assign fault.
+
+It sat untouched—complex, under-scoped, and avoided. A V1 Telegram bot needing a V2 kernel life. I had zero prior Telegram bot experience and took it.
+
+## The quiet takeover
+Marketing was gearing up for back-to-back events and wanted a narrative: frictionless chat workrooms, payment pings, review nudges. A contributor was stuck. Management DM'd me privately: could I take it over? At the same time I was triaging payment portal latency regressions and patching legacy faults during live demos. I said yes. Momentum makes crazy loads feel normal.
+
+## Picking the harder path (and being overruled)
+My instinct: keep it Bot API only—fast, auditable, simple. A decision was made to layer personal account (MTProto) group creation. The mandate: build a dual-path “hybrid” system—Workers for Bot API, self-dispatched workflows for MTProto features.
+
+## Designing the hybrid architecture
+I split concerns:
+- Worker (Hono/grammy) for low-latency command routing
+- Self-dispatch workflows for privileged MTProto tasks (create/close/reopen, deep actions)
+- Supabase session persistence (later reducible) for auth state
+- Structured commands: /newtask, /ask, /setcommands, lifecycle operations
+- Storage abstraction to migrate away from DB reliance
+
+It looked elegant in motion: the Worker classified an event → dispatched a repository_dispatch → the workflow ran the heavier MTProto path → wrote back state → the Worker acknowledged in chat.
+
+```ts
+export async function createChat(context: Ctx) {
+  const { payload, adapters: { storage } } = context;
+  const chatName = `@${payload.repository.full_name}#${payload.issue.number}`;
+  const chat = await mtproto.createSupergroup({
+    title: chatName,
+    description: `Task: ${payload.issue.title}`
+  });
+  await storage.handleChat({ action: ChatAction.CREATE, chatId: chat.id, repositoryId: payload.repository.id, issueNumber: payload.issue.number });
+  return chat;
+}
+```
+
+## Review cadence note
+Latency + environment setup overhead mirrored patterns catalogued in [organizational dynamics arc](/writing/organizational-dynamics-arc); focusing here on architecture.
+
+## Shipping anyway
+Eventually the system *did* deploy. And once unblocked, features shipped in a rapid wave: direct contributor DMs for payments, review request prompts, task dismissal hooks, workroom lifecycle automation. The architecture held; the hybrid model worked. Praise landed in PR comments—“wild architecture,” “future of plugins”—but approvals still lagged calendar weeks behind output.
+
+## Organizational friction
+Review setup delays and configuration steps increased cycle time. Without a documented rationale snapshot, later complexity questions lacked the original mandate context. Future improvement: codify requirement + success metrics before accepting hybrid expansion.
+
+## Aftermath and rewrite attempts
+A later lighter rewrite explored a reduced surface (dropping MTProto) trading breadth for simplicity. The original hybrid pattern (fast path + delegated heavier path) still informed subsequent design choices.
+
+## Looking back
+I'm still proud of choosing the harder architectural through-line and making it real under constraint I didn't design. The work solved a genuine collaboration gap. The failure wasn't technical—it was a review system that couldn't metabolize sustained high output and leadership that outsourced direction to ad-hoc urgency.
+
+*Lesson: architecture can outlive momentum—protect the review process that converts velocity into durable trust.*
+
+### See also
+- Case study — [Telegram micro-kernel case study](/work/telegram-micro-kernel)
+- Related architecture shift — [Build plugins fast with a template](/writing/build-plugins-fast-with-a-template)
+- Adjacent cryptography arc — [Secure permits for ERC20 and ERC721](/writing/secure-permits-for-erc20-and-erc721)

@@ -1,0 +1,86 @@
+---
+title: "Delivering the plugin installer after multiple stalled attempts"
+publishedAt: "2025-07-02"
+summary: "How I was replaced by two developers, then built the critical partner-facing installer they couldn't ship—while higher rewards went to lower-impact internal tools."
+tags: ["Workplace", "Delivery", "Incentives", "Value", "Process"]
+readingTime: "12 min"
+relatedWorkSlug: plugin-installer
+---
+> Note: Delivery retrospective. Incentive signal analysis centralized in [organizational dynamics arc](/writing/organizational-dynamics-arc).
+
+---
+
+> **Disclaimer:** Personal account of a late-stage delivery under perceived priority and reward misalignment; shared for lessons, not to disparage individuals.
+
+Picture this: after role changes and two replacement hires, a critical partner-facing installer still isn't landing. I step back in during my final month to deliver it.
+
+## The setup: divide and adjust capacity
+
+November 2024. A structural change reallocated my former salary across two new developers with the expectation that combined output would exceed a single contributor's. Velocity on the installer remained limited for a period.
+
+One of these replacement developers was supposed to lead the plugin installer UI—a critical piece of partner-facing infrastructure needed during active marketing efforts. Partners needed a clean, working interface to install over 10 plugin options for their UbiquityOS kernel instances.
+
+The task had been open for months. Multiple non-core developers had attempted it. No progress.
+
+Informal mentions of possible lower-rate positions surfaced. I still believed more delivery could rebalance things. It didn't.
+
+## Implementing a blocked scope
+
+So there I was, starting work on the UI my replacement was supposed to be leading. Why? Because there was zero progress and it was a business need. Active marketing efforts required this infrastructure to exist.
+
+The technical challenge wasn't trivial. I was working with `manifest.json` files for each plugin—stringified TypeBox and AJV objects that can get messy fast. Plus partner YAML configuration files that I had to parse, validate, and commit on their behalf through interfaces that allowed them to:
+
+- Select which organization the install/edit was for
+- Choose specific repositories or apply globally  
+- Handle repository-level differences from global config
+- Manage schema validation to prevent plugin runtime failures
+
+Converting HTML form inputs into AJV/TypeBox validatable objects that strictly match schemas? Not super difficult, but tedious as hell. One validation error and plugins fail to run entirely.
+
+The UI started as a small POC but expanded dramatically from the original intent—no direct plugin URL access, just comprehensive setup and editing through a browser interface.
+
+## The sprint: seven PRs in one month
+
+I merged 7 PRs between November 10th and December 5th. Since then, only one minor edit (reverting a naming constraint) was needed.
+
+Snapshot at the time:
+- Partner-facing installer: production-ready, minimal post-deploy churn
+- Internal notification tool: alternate surface over existing GitHub notifications, relatively higher reward
+
+This highlighted a perceived mismatch in value allocation.
+
+## Delivery burst (summary)
+
+Seven PRs merged in a month with minimal post-deploy churn; incentive commentary removed (see [organizational dynamics arc](/writing/organizational-dynamics-arc)).
+
+## The takeaway
+
+In the end, the quick and quality delivery of yet another greenfield project end-to-end did absolutely nothing to affect my standing in the increasingly hostile situation. But it kept a roof over my head for another month. That, alongside the coding experience and life lessons learned, was the real takeaway.
+
+This would be my last substantial piece of work for Ubiquity—besides waiting for the permit generation module to be merged before learning that Ubiquity as we knew it would no longer operate in an open-source, publicly accessible way.
+
+## Value signals reflected
+
+**Technical excellence doesn't automatically guarantee role continuity.** Production-ready infra can still be deprioritized if strategic focus shifts.
+
+**Resource allocation reveals priorities.** Observable compensation patterns communicate internal valuation.
+
+**Replacement ramp time is a real risk.** Institutional knowledge compresses delivery time.
+
+**Sometimes work sustains rather than advances.** This project stabilized finances without altering trajectory.
+
+## Final irony
+
+The plugin installer still runs today with minimal intervention—similar longevity to other infra pieces I shipped, including an RPC handler later replaced by an AI-generated rewrite with gaps.
+
+The original scope landed through a final sprint; successors focused on different tooling.
+
+Sometimes the most valuable lesson is learning what an organization actually values. And sometimes what they value tells you everything you need to know about whether you want to be there.
+
+---
+
+*Watch how incentives map to externally facing vs internal deliverables.*
+
+### See also
+- Case study: [/work/plugin-installer]
+- Related process thread: [Auto-sync price labels](/writing/auto-sync-price-labels)

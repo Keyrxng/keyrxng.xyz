@@ -1,0 +1,87 @@
+---
+title: "The Ghost's Footprint (Part I): Why Vector Semantics Outlast People"
+description: "Case study + root-cause diagnosis of 'temporal resistance'—when historical embeddings keep recommending departed contributors."
+summary: "Part I of a 3-part series: a narrative incident report that defines temporal resistance, shows the evidence, and isolates architectural causes before prescribing solutions in Part II."
+publishedAt: "2025-08-15"
+date: 2025-08-15
+tags:
+  - semantic-search
+  - embeddings
+  - recommender-systems
+  - observability
+---
+
+> Series roadmap: Part I (this post) tells the story & diagnosis. Part II delivers the pragmatic playbook to fix it. The companion field note ("Semantic task matchmaking") captures the original observation that sparked the investigation.
+
+## Executive summary
+
+Six months after leaving a codebase, a departed engineer kept surfacing as a top recommendation in an AI semantic task matcher. Not a spooky anomaly—an *inevitable* side-effect of time-blind vector similarity. This post names the failure mode ("temporal resistance"), reconstructs the evidence, and isolates four root causes. The takeaway: semantic strength without temporal context produces operationally stale guidance. Part II will show how to reintroduce time, availability, and safer fallbacks—without discarding semantic quality.
+
+## Visualizing the problem
+
+Picture a triage meeting. An issue is auto-tagged: top recommendation—someone who left *half a year ago*. A second, a third, still the same name. The replacements rarely appear. The numbers crystallize it: departed contributor 136 merged PRs / 74 semantic tags; successors combined 38 semantic tags (35 + 3). Absence hasn't dimmed the algorithmic presence.
+
+That apparition is the ghost in the machine: a vectorized semantic identity that remains perfectly crisp while human context (recency, availability, ownership) erodes.
+
+## How modern semantic recommenders typically work (brief)
+
+- Issue text → instruction-tuned model → high-dimensional embedding.
+- Contributor profiles → aggregated embeddings derived from historical contributions.
+- Embeddings stored in a vector DB (for example, Supabase, Pinecone, or similar).
+- Query-time: compute issue embedding, run a nearest-neighbor (cosine or inner-product) search to return the top-N contributor vectors.
+
+This pipeline excels at relevance: it surfaces people whose historical writing or code most closely matches the problem. Its weakness is orthogonal: it treats time as invisible.
+
+Note on contributor profiles: advanced systems may build contributor-level embeddings (an aggregation of a person's prior issues, PR descriptions, docs and other artifacts) and use those profiles as first-class objects in ranking. That approach is powerful but not universal. In the case of the Ubiquity OS implementation the system is much simpler: it searches for cosine-similar issues and then fetches the assignees of those matched issues — it doesn't use an aggregated contributor embedding as a separate ranked object. The paragraph above describes both patterns; treat the contributor-profile line as aspirational for more advanced setups and not a precise statement about Ubiquity OS.
+
+## What I mean by temporal resistance
+
+Temporal resistance describes a tendency for historical embeddings to maintain disproportionate influence over recommendations as time passes. The math behind cosine similarity and dense embeddings preserves the semantic core of a contributor's work. If the system never discounts older signals, then those signals never fade. The result is a recommender that is skewed toward historically important contributors, even if they're no longer available.
+
+An easy-to-grasp metric in the dataset is semantic efficiency: semantic tags divided by merged PRs. The departed contributor's efficiency is about 0.544 (74 tags / 136 PRs). That ratio makes their historical footprint dense and highly visible compared with many contemporaries. Systems that rely only on that footprint will keep surfacing it.
+
+## Why this matters in production
+
+- Operational misrouting: tasks get suggested for people who can't take them on, slowing triage and completion.
+- Trust erosion: teams stop trusting automated suggestions when recommendations visibly contradict reality.
+- Behavioral and cost risk: organizations may over-index on historical contributors, leading to poor workload distribution and hidden overhead.
+
+These are not theoretical problems. The dataset shows many contributors with high tag counts concentrated in people who may no longer be active. Without recency signals, the recommender becomes an echo chamber for the past.
+
+## Concise taxonomy of root causes
+
+1. Missing time weighting. Similarity = cosine(issue, contributor); no λ factor for recency.
+2. No availability signal. No flag or data source marks someone as active, inactive, or departed.
+3. Aggressive fallback logic. An "alwaysRecommend" behavior forces a match even when confidence is low.
+4. Data freshness gaps. Contributor embeddings aren't re-generated after role changes or departures.
+
+Each of these is low-friction to fix in isolation — the trick is to do it safely and iteratively.
+
+## A small illustrative formula
+
+If base_similarity = cosine(issue_embedding, contributor_embedding), a minimal adjustment is:
+
+adjusted_similarity = base_similarity * exp(-λ * days_since_last_activity)
+
+When λ = 0 the system is the old baseline. As λ grows, recency has more influence. Choosing λ is an operational decision: too large and you punish valuable experience; too small and you leave the ghost unchecked.
+
+## Measurement you should add now
+
+- Fraction of recommendations pointing to dormant or departed contributors (use 14d/30d dormancy windows).
+- Recommendation acceptance rate broken out by contributor dormancy bucket.
+- Mean time-to-complete for tasks assigned via recommender vs manual assignment.
+
+These metrics answer the core question: is the recommender helping current workflows or amplifying past work?
+
+## Key takeaways
+
+- Embeddings are excellent at capturing semantic identity; they are poor at capturing recency unless you explicitly encode time.
+- Small architectural knobs (time decay, availability flags, safer fallback rules) move the system toward operational relevance.
+- Start measuring temporal failure modes before you change the model. Data-first experiments minimize regressions.
+
+## Where we go next
+
+Part II ("Practical Temporality") converts this diagnosis into a minimal, low-risk remediation playbook: time decay, availability integration, hybrid scoring, safer fallbacks, experiment design. The companion narrative ("Semantic task matchmaking") provides the original field log and human context that triggered this deeper dive.
+
+- Continue: [Part II – Practical Temporality](./ghost-in-the-machine-part-2)  
+- Field note: [Semantic task matchmaking](./semantic-task-matchmaking)

@@ -1,0 +1,77 @@
+---
+title: "A PR about architectural taste (and an expensive lesson)"
+publishedAt: "2025-04-17"
+summary: "Sometimes the code works, the architecture is sound, and you still get rejected. A $1,500 bounty that slipped away—illustrating the gap between 'correct' and 'mergeable.'"
+tags: ["Rejection", "Learning", "Startups", "Architecture", "Growth"]
+readingTime: "6 min"
+relatedWorkSlug: ai-slack-agent
+---
+
+> Note: Personal retrospective on architectural fit vs house style; individuals generalized, focus on transferable lessons.
+
+I needed the bounty.
+
+Two months behind on rent, recently disengaged from prior work, and needing proof I could deliver elsewhere. The GitHub issue: build a Slack moderation agent, clear requirements, meaningful scope.
+
+Irony: building a suspension tool while personally insecure about stability.
+
+## The old playbook
+
+I approached it like I'd learned at Ubiquity: centralized context object, dependency injection, classes with clear inheritance hierarchies. TypeScript generics that mapped webhook payloads directly to handler types, eliminating the need for scattered `if ("bar" in foo)` checks throughout the codebase.
+
+It was clean. It was type-safe. It worked.
+
+```ts
+class SlackContext<T extends SupportedSlackEvents> {
+  payload: SlackEventPayload<T>;
+  // client, config, etc...
+}
+
+...
+
+function messageWebhookHandler(ctx<"message">) {
+    // TypeScript knows exactly what ctx.payload contains
+    // No casting, no inner method type checks
+    // Just clean, predictable code
+}
+```
+
+The architecture felt right. One place where we did the dirty type narrowing, then everywhere else could trust the types. Multi-tenant OAuth flows with encrypted tokens. Email-based identity resolution between Slack and Clerk. Admin-gated tools that could suspend users, restore them, fetch info—all without leaving the channel.
+
+Result: 50 commits, 37 files, clear documentation, [working demo](https://github.com/antiwork/iffy/pull/120#issuecomment-2819679909).
+
+## Architectural taste (compressed)
+
+Working implementation declined due to stylistic divergence (class/context abstraction vs flatter functional house style). Theme expanded in [organizational dynamics arc](/writing/organizational-dynamics-arc).
+
+## The plot twist
+
+Months later once I was back on my feet, I picked up C# and started building mods for Rust (the game, not the language). No frameworks to conform to, no house styles to navigate, no pull request reviews to survive. Just me, Unity, and the joy of building things purely for the enjoyment of it.
+
+It was exactly what I needed. Breaking away from the AI/Web3/TypeScript/React box I'd been living in. Learning something completely new, just for fun, with zero career pressure attached. Slowly, the love for the craft came back.
+
+## Reflections
+
+**Taste is local.** What feels clean and maintainable to one team can feel over-engineered to another. What feels explicit and safe to me feels verbose and Java-esque to others. Neither perspective is wrong—they're just optimizing for different constraints.
+
+**Style is a team API.** If you want your code merged, you adapt to the existing patterns first, then propose changes gradually. I came in I guess, introducing a new approach rather than extending theirs but not through arrogance, pride or spite. Just learned habits that didn't quite apply here. 
+
+**Skill is portable, but culture isn't.** I could write working (even beautiful, sometimes) TypeScript abstractions, but I couldn't read the room. The technical part was never in question—the social part was where I failed.
+
+**Sometimes you need to step back to move forward.** That detour into C# and game modding wasn't career suicide—it was career preservation. When you're burnt out on the industry, the best thing you can do is fall in love with the craft again.
+
+## Ongoing stance
+
+I still prefer type-driven designs over sprawling pattern switches and centralized narrowing. Now I treat architectural preferences like accents—team-specific, not universal correctness.
+
+The PR taught me that "correct" and "mergeable" are different things. That context switching between codebases means context switching between philosophical approaches, not just syntax. That humility isn't just about admitting when you're wrong—it's about admitting when you're different.
+
+And sometimes, the most valuable lessons come wrapped in the most expensive failures.
+
+---
+
+*The Slack agent idea was sound. The implementation worked. But implementation is just the beginning—the real work is making it fit.*
+
+### See also
+- Case study: [/work/ai-slack-agent]
+- Related style arc: [Auto-sync price labels](/writing/auto-sync-price-labels)

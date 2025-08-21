@@ -1,0 +1,66 @@
+---
+title: "Shipping reliable tests: Cypress + Jest + Foundry"
+publishedAt: "2025-05-15"
+summary: "Deterministic tests: select healthy RPCs, stub wallets, mock external APIs, and wire coverage into CI."
+tags: ["Testing", "Cypress", "Jest", "Foundry", "Web3"]
+readingTime: "5 min"
+relatedWorkSlug: automated-testing
+---
+Reliability is a UX feature—tests are just another user interface, and flakes are “unhandled state” pretending to be code failures. My testing approach at Ubiquity emerged from owning (or green-fielding) six distinct suites: three I maintained day-to-day (payment portal + directory + rpc-handler), the others I bootstrapped then handed off (logger, plugins, etc). Different stacks, same principle: fix the environment first, *then* assert behavior.
+
+## The first pattern: the problem wasn't the tests
+Early failures screamed “flaky test” but log spelunking said otherwise: stalled RPCs, nonce races, wallets missing funding, mobile flows without `window.ethereum`. Rewriting specs didn't help because the root was entropy before the first assertion executed.
+
+## Layered responsibilities (summary)
+Fork selection, idempotent funding, wallet stubbing, minimal intercepts, isolated unit branching. Full detail in reliability playbook.
+
+## Environment as code
+Anvil startup evolved into a tiny orchestrator: measure RPC latencies (reusing the handler work), sort, attempt a fork, fall through on failure. Deterministic selection eliminated “works on my machine” drift—teams pulled the same fastest endpoint per run window.
+
+```ts
+async function selectForkRpc(handler: RPCHandler) {
+  await handler.testRpcPerformance();
+  const sorted = Object.entries(handler.getLatencies()).sort(([,a],[,b]) => a - b);
+  return sorted.map(([k]) => k.split("__")[1])[0];
+}
+```
+
+## The wallet that wasn't there
+Full MetaMask automation is seductive—and brittle. UI surface changes, extension timing, iframe isolation. I shipped a stub instead: feature-shaped object, predictable `request` responses, controlled event emission. That unlocked reliable mobile viewport tests (which naturally lack injected providers) by treating absence as a first-class branch.
+
+```ts
+cy.on("window:before:load", (win) => {
+  (win as any).ethereum = {
+    isMetaMask: true,
+    chainId: "0x7a69",
+    request: cy.stub().callsFake(async ({ method }) => handleRpc(method)),
+    on: cy.stub(),
+    selectedAddress: testAddress
+  };
+});
+```
+
+## Making flakes actionable
+Instrumentation mattered: logs for “Forking with RPC: X”, funding steps (“impersonate”, “approveFunding”, “transfer”), and intercept hits. A failed run should read like a story, not a hexdump. Once narratives were consistent, triage time collapsed.
+
+## Maintenance vs one-offs (summary)
+Long-lived suites harden iteratively; one-offs prioritize scaffolding (funding script, MSW, coverage gate). Expanded tactics: reliability playbook.
+
+## Opinionated test philosophy
+- Don't over-mock; mock *boundaries*.
+- Fail loudly on setup ambiguity; silent skips hide rot.
+- Wallet UX variance is an integration concern, not every spec's burden.
+- Coverage >= threshold is a guardrail, not an end state; unreadable tests are tech debt.
+
+## Payoff
+Nonce errors vanished. “Flake” label usage dropped. Mobile flows stopped being a coin toss. Test reviews shifted from “why did this fail?” to “should we assert this branch too?”—the conversation you want.
+
+## In one breath
+Deterministic fork. Idempotent funding. Stubbed wallet. Minimal, meaningful intercepts. Unit isolation with MSW. Loud logs. Quiet dashboards.
+
+---
+
+### See also
+- Case study — [Automated testing case study](/work/automated-testing)
+- RPC selection — [Fail-fast RPC selection](/writing/fail-fast-rpc-selection-for-real-apps)
+- Payment portal performance — [Sub-second payment portal](/writing/sub-second-payment-portal)

@@ -1,0 +1,41 @@
+---
+title: "Semantic Task Matchmaking: Legacy Vector Gravity After 6+ Months Away"
+publishedAt: "2025-08-13"
+summary: "Field note and catalyst: why I remained #2 in semantic tags after 6+ months absent, what that reveals about vector gravity, and how it motivated the 'Ghost' series on temporal resistance." 
+tags: ["AI", "RAG", "Embeddings", "Process", "Matchmaking"]
+readingTime: "7 min"
+relatedWorkSlug: command-ask
+soWhat: "Shows enduring cross-domain impact while proposing concrete scoring upgrades to reduce historical bias."
+ogImage: "/og/semantic-task-matchmaking.png"
+---
+
+> Series linkage: This field note is the *catalyst* that led to Part I (diagnosis) and Part II (playbook) of the "Ghost in the Machine" series. It captures the raw observation—persistence without presence—and frames the narrative for stakeholders. See [Glossary](/writing/_glossary) for terminology.
+
+## 1. Context: the triggering observation
+During my tenure the company (Ubiquity) introduced an AI + RAG semantic task matchmaking layer: vector embeddings of past work, completed issues and tasks, driving “suggested / tagged” developer assignments atop Ubiquity OS. I have been absent >6 months. Yet in the latest metrics export (self-generated 2025-08-19) I remain the **second most semantically tagged contributor**.
+
+Source table: `contributor_table.csv` (timestamp: 2025-08-19T22:21:54.761Z). Columns: *Merged PRs*, *Semantic Tags*, *Dormant windows*, etc.
+
+## 2. Snapshot: tag distribution (evidence)
+| Rank | Contributor | Semantic Tags | Merged PRs | Tags / Merged PR |
+| ---- | ----------- | ------------- | ---------- | ---------------- |
+| 1 | gentlementlegen | 197 | 783 | 0.25 |
+| 2 | **Keyrxng** | **74** | 136 | **0.54** |
+| 3 | whilefoo | 47 | 119 | 0.39 |
+| 4 | 0x4007 | 38 | 283 | 0.13 |
+| 5 | shiv810 | 35 | 55 | 0.64 |
+| 6 | ishowvel | 20 | 14 | 1.43* |
+
+*\*Small denominator; high ratio but low absolute surface.*
+
+- **Successors combined**: 35 + 3 = 38 (< my 74) despite recent inactivity.
+
+## Condensed
+Drivers, remediation formulas, and metrics now live in Ghost series Part I & II; this field note retains only the trigger and tag table.
+
+---
+*Legacy vector gravity reveals temporal resistance—this note records the spark.*
+
+### See also
+- Context bot evolution — [Context-aware answers on GitHub](/writing/context-aware-answers-on-github)
+- Organizational lessons — [Organizational dynamics arc](/writing/organizational-lessons)

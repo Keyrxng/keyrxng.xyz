@@ -1,0 +1,34 @@
+---
+title: "Type System Patterns"
+publishedAt: "2025-07-06"
+summary: "Subtractive TypeScript strategies underpinning webhook enum generation & union simplification."
+readingTime: "3 min"
+tags: ["TypeScript", "Architecture"]
+---
+
+## 1. Subtractive inference
+Precompute record of event → payload to avoid repeated conditional expansion.
+
+## 2. Generated literal surfaces
+Build step emits literal unions (networks, events). Favor ergonomics first; optimize size after stability.
+
+## 3. Escape hatch
+Use widening patterns `(string & {})` for forward compatibility without losing autocomplete.
+
+## 4. Template literal transforms
+Recursive template literal mapping (`A.B.C` → `A_B_C`) producing stable identifiers while preserving original runtime values.
+
+## 5. Decision checklist
+```
+□ Can we precompute?
+□ Replace repeated conditional access with indexed map lookup
+□ Defer size optimization until adoption data exists
+□ Provide an escape path for unknown future values
+```
+
+---
+*Subtractive type design: precompute, map, and escape—repeat.*
+
+### See also
+- [Type-safe webhook events](/writing/type-safe-webhook-events)
+- [When TypeScript unions get too big](/writing/fixing-ts-union-explosions)

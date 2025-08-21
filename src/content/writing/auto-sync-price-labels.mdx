@@ -1,0 +1,62 @@
+---
+title: "How a trivial config debate exposed deeper process issues"
+publishedAt: "2025-06-15"
+summary: "How a simple `packageManager` field in package.json became the hill I died on, and why saying yes to everything while never saying yes to bad ideas is an unwinnable strategy."
+tags: ["Reviews", "Standards", "Politics", "Nitpicking", "Peak Performance"]
+readingTime: "10 min"
+relatedWorkSlug: global-base-rate-sync
+---
+
+> Note: Process reflection; broader patterns in [organizational dynamics arc](/writing/organizational-dynamics-arc).
+
+July 2024. I was at my peak—the most prolific contributor bar one, maintaining both the payment portal and RPC handler, with my sights set on owning another project end-to-end. The global base rate sync plugin seemed like easy glory: scan the kernel config file, detect price changes, trigger organization-wide label updates.
+
+Simple, right?
+
+What I got instead was a three-month journey of stalled reviews, TypeScript debates, and a config field controversy that *signaled* the beginning of misalignment.
+
+## The field that started it all
+
+It was such an innocent addition:
+
+```json
+"packageManager": "yarn@1.22.22"
+```
+
+This field gets added automatically when you have CorePack enabled and is innocent particularly if everyone uses yarn@1.22.22 anyway, only in very specific repos do we use v4, where it's required and ensures CI runs V4. It also helps with OSS contributions, prevents "works on my machine" issues, and ensures package manager consistency across contributors.
+
+The team—myself, Rndquu, Gentlementlegen, Whilefoo—had all agreed to standardize it across repositories. It had no negative side effects and guided new contributors.
+
+Management's response raised questions about necessity instead of revisiting earlier alignment. A small delta inflated into broader discussion.
+
+### TypeScript generic constraints
+```typescript
+// last one is needed to satisfy typeguard constraints
+export type SupportedEvents = "issues.labeled" | "issues.unlabeled" | "label.edited" | "issue_comment.created" | "push" | "issue_comment";
+```
+
+> **0x4007**: "Can you elaborate on this comment?"
+> 
+> **Me**: [Explains TypeScript constraint logic]
+> 
+> **0x4007**: "Seems like a hack but I don't understand the types implementation well enough to offer suggestions. There probably is a way to handle the type definition correctly to resolve this?"
+> 
+> **Me**: [Provides detailed explanation of previous approach and why current solution is better]
+> 
+> **0x4007**: "I am not great with type definitions, but seems like you did your research!"
+
+Net effect: uncertainty about ownership of standards and how deep an implementation rationale needed to go per comment, prior to over-correcting towards the end of my time, I defaulted to verbosity to try avoid situations like this.
+
+## Review friction (condensed)
+Extended latency → re-litigation of previously casual consensus (packageManager field, generic constraints). Takeaway: capture trivial standards early; escalate once, then redirect energy.
+
+## Closing reflection
+Three months of drawn-out review for a plugin that should have taken a week highlighted a gap between lightweight standards capture and evolving expectations. My lesson: codify trivial agreements early; escalate only once before disengaging, then redirect energy to higher-leverage work.
+
+---
+
+*Sometimes the smallest technical decisions reveal larger process gaps.*
+
+### See also
+- Case study — [/work/global-base-rate-sync](/work/global-base-rate-sync)
+- Next chapter — [Building what my replacement couldn't](/writing/install-plugins-in-the-browser)

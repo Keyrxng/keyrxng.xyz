@@ -1,0 +1,47 @@
+---
+title: "Glossary: terms & components referenced across posts"
+publishedAt: "2023-08-20"
+summary: "Concise definitions for recurring architecture and process terminology used in the writing collection."
+readingTime: "2 min"
+---
+
+> Reference companion for readers new to the ecosystem context.
+
+**Kernel (UbiquityOS / Ubiquibot)** — Automation core integrating GitHub webhooks, scheduling, and plugin execution.
+
+**Plugin / Kernel Plugin** — Extendable module responding to kernel events (issues, PRs, comments) to execute automation logic.
+
+**Worker (Cloudflare Worker)** — Edge runtime (V8 isolates) used for low-latency HTTP handling and lightweight compute; limited CPU and memory compared to full servers.
+
+**GitHub Action (Workflow)** — GitHub-hosted CI runtime triggered by repository events; higher cold-start and latency overhead, suitable for longer or heavier tasks.
+
+**Hybrid Architecture (Worker + Action)** — Pattern where a Worker handles fast path classification and dispatches heavier or privileged tasks to a self-triggered Action workflow.
+
+**MTProto** — Telegram protocol for full account control (creating groups, managing chats) vs Bot API which has limited capabilities.
+
+**Permit (ERC20 / ERC721 Permit Generation)** — Off-chain signed authorization enabling token approvals or transfer rights without a separate on-chain approval transaction.
+
+**RPC (Remote Procedure Call Endpoint)** — Blockchain JSON-RPC node endpoint; multiple endpoints are probed and ranked for latency and reliability.
+
+**RPC Handler** — Library selecting and rotating between RPC endpoints transparently to mitigate single-endpoint failures.
+
+**Deterministic Fork (Anvil / Foundry)** — Local blockchain state snapshot derived from a specific upstream RPC at a point in time, ensuring test reproducibility.
+
+**ADR (Architectural Decision Record)** — Lightweight persistent document capturing problem, constraints, chosen solution, alternatives, and sunset criteria.
+
+**Direction Freeze** — Explicit checkpoint signaling that strategic platform choices (runtime, data model) are locked for a phase to reduce churn.
+
+**Silent Win** — Reliability success characterized by absence of incidents (no outages, reduced flakes) that otherwise risks being undervalued.
+
+**Policy Surface** — User-facing commands or minimal UX gestures backed by deeper eligibility / authorization logic (e.g., `/start` task claim).
+
+**Context Engineering (LLM)** — Intentional selection, ranking, and budgeting of textual artifacts (issues, diffs, references) to fit within model token limits without degrading answer quality.
+
+**Depth Cap (LLM)** — Maximum recursion or link-following depth when gathering related context to prevent token overrun and hallucination risk.
+
+**Optimistic Render** — UI technique rendering static or partially-known data immediately while resolving slower dynamic calls in the background.
+
+**Test Funding Orchestration** — Automated script ensuring required accounts, allowances, and balances are set before E2E tests begin to remove environmental flakiness.
+
+---
+*If a term is missing you'd like clarified, open an issue or reach out and it can be added.*
