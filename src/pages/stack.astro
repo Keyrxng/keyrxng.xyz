@@ -1,0 +1,149 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from 'astro:content';
+
+// Collections
+const technologies = await getCollection('technologies');
+const competencies = await getCollection('competencies');
+
+// Derive groups from content (non-framework technologies only)
+const nonFrameworkTechs = technologies.filter((t) => t.data.category !== 'framework');
+const groupLabels = Array.from(new Set(nonFrameworkTechs.map((t) => t.data.group).filter(Boolean)));
+// Higher weight = higher in the page. Negative = lower-priority layers.
+const groupWeight: Record<string, number> = {
+  'AI': 5,
+  'Blockchain': 4.5,
+  'Web3': 4,
+  'Auth': 3,
+  'Cryptography': 2,
+  'Web & Platform': 1,
+  'Runtimes': -1,
+  'Data': -2,
+};
+const groups = groupLabels
+  .map((label) => ({
+    label,
+    items: nonFrameworkTechs.filter((t) => t.data.group === label)
+  }))
+  .sort((a, b) => (groupWeight[b.label as keyof typeof groupWeight] ?? 0) - (groupWeight[a.label as keyof typeof groupWeight] ?? 0));
+
+// Languages presented as elegant, minimal cards (with icons + docs)
+const languages: { name: string; notes?: string; icon: string; docs: string }[] = [
+  {
+    name: 'TypeScript',
+    notes: 'Primary — web, CLIs, and edge runtimes',
+    icon: '/tech-icons/typescript.svg',
+    docs: 'https://www.typescriptlang.org/docs/'
+  },
+  {
+    name: 'Solidity',
+    notes: 'EVM contracts, upgrades, and audits',
+    icon: '/tech-icons/solidity.webp',
+    docs: 'https://docs.soliditylang.org/'
+  },
+  {
+    name: 'Rust',
+    notes: 'Perf-critical utilities and tools',
+    icon: '/tech-icons/rust.svg',
+    docs: 'https://doc.rust-lang.org/'
+  },
+  {
+    name: 'C#',
+    notes: 'Plugins/modding for Rust (Unity)',
+    icon: '/tech-icons/c-sharp.svg',
+    docs: 'https://learn.microsoft.com/dotnet/csharp/'
+  },
+];
+
+// Frameworks (auto from content)
+const frameworks = technologies.filter((t) => t.data.category === 'framework');
+---
+<BaseLayout title="Stack" description="Representative stack choices. I choose tools to fit constraints—here are frequent picks with notes and related work." theme="atelier">
+  <section class="stack">
+    <h1>Stack</h1>
+  <p class="page-intro">Representative picks chosen by constraint fit. Each ties back to shipped work, essays, or operating patterns.</p>
+  </section>
+
+  <!-- Languages -->
+  <section class="stack" aria-labelledby="languages-heading" style="margin-top:var(--space-7);">
+  <h2 id="languages-heading" style="margin:0">Languages</h2>
+    <div class="lang-grid">
+      {languages.map((l) => (
+        <div class="lang-card" role="group" aria-label={`${l.name} — language`}>
+          <div class="lang-icon">
+            <img src={l.icon} alt="" width="28" height="28" loading="lazy" />
+          </div>
+          <div class="lang-title">{l.name}</div>
+          {l.notes && (<div class="lang-sub">{l.notes}</div>)}
+          <div class="chips">
+            <a href={l.docs} class="chip" target="_blank" rel="noopener">Docs</a>
+          </div>
+        </div>
+      ))}
+    </div>
+  </section>
+
+  {frameworks.length > 0 && (
+    <section class="stack" aria-labelledby="frameworks-heading" style="margin-top:var(--space-7);">
+  <h2 id="frameworks-heading" style="margin:0">Frameworks</h2>
+      <div class="tech-grid">
+        {frameworks.map((t) => (
+          <div class={`tech-card`} role="group" aria-label={`${t.data.name} — ${t.data.category}`}>
+            <div class="tech-icon">
+              {t.data.icon ? <img src={t.data.icon} alt="" width="28" height="28" loading="lazy"/> : <div class="tech-dot" />}
+            </div>
+            <div class="tech-meta">
+              <div class="tech-title">{t.data.name}</div>
+              <div class="tech-sub">{t.data.category} · {t.data.area}</div>
+              {t.data.notes && (<div class="tech-notes">{t.data.notes}</div>)}
+              {t.data.links && t.data.links.length > 0 && (
+                <div class="chips" style="margin-top: 6px;">
+                  {t.data.links.slice(0, 2).map((l) => (
+                    <a href={l.url} class="chip" target={l.url.startsWith('http') ? '_blank' : undefined} rel={l.url.startsWith('http') ? 'noopener' : undefined}>{l.label}</a>
+                  ))}
+                </div>
+              )}
+            </div>
+          </div>
+        ))}
+      </div>
+    </section>
+  )}
+
+  {groups.map((g) => (
+    <section class="stack" style="margin-top:var(--space-7);">
+  <h2 style="margin:0">{g.label}</h2>
+      <div class="tech-grid">
+        {g.items.map((t) => {
+          const href =  t.data.relatedWorkSlugs && t.data.relatedWorkSlugs[0] ? `/work/${t.data.relatedWorkSlugs[0]}` : undefined;
+          return (
+            <div class={`tech-card`} role="group" aria-label={`${t.data.name} — ${t.data.category}`}>
+              <div class="tech-icon">
+                {t.data.name === 'Alchemy x Gnosis' ? (
+                  <img src="/tech-icons/alchemy-gnosis.svg" alt="" width="28" height="28" loading="lazy" />
+                ) : (
+                  t.data.icon ? <img src={t.data.icon} alt="" width="28" height="28" loading="lazy"/> : <div class="tech-dot" />
+                )}
+              </div>
+              <div class="tech-meta">
+                <div class="tech-title">{href ? (<a href={href}>{t.data.name}</a>) : t.data.name}</div>
+                <div class="tech-sub">{t.data.category} · {t.data.area}</div>
+                {t.data.notes && (<div class="tech-notes">{t.data.notes}</div>)}
+                {t.data.links && t.data.links.length > 0 && (
+                  <div class="chips" style="margin-top: 6px;">
+                    {t.data.links.slice(0, 2).map((l) => (
+                      <a href={l.url} class="chip" target={l.url.startsWith('http') ? '_blank' : undefined} rel={l.url.startsWith('http') ? 'noopener' : undefined}>{l.label}</a>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  ))}
+
+</BaseLayout>
+
+

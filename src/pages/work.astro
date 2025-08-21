@@ -1,0 +1,129 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from 'astro:content';
+const items = await getCollection('work');
+const years = Array.from(new Set(items.map((it) => it.data.year))).sort((a, b) => String(b).localeCompare(String(a)));
+---
+<BaseLayout title="Work — Case Studies" description="Selected engineering case studies: constraints framed early, explicit trade-offs, evidenced outcomes across AI, Web3, tooling, and reliability.">
+  <section class="stack">
+    <h1>Work</h1>
+  <p class="prose">Selected case studies—constraints framed early, trade-offs explicit, outcomes evidenced.</p>
+    <div class="subnav">
+      <div class="container cluster" style="justify-content: space-between; padding: 0;">
+        <div class="cluster" id="year-filter" aria-label="Jump by year">
+          <button class="chip chip--selectable chip--active" data-year="all">All</button>
+          {years.map((y) => (<button class="chip chip--selectable" data-year={y}>{y}</button>))}
+        </div>
+        <div class="cluster" style="margin-left:auto;">
+          <div class="cluster view-toggle" id="view-toggle" role="group" aria-label="Layout toggle">
+            <button class="chip chip--selectable" data-view="grid" aria-pressed="true" title="Grid view">Grid</button>
+            <button class="chip chip--selectable" data-view="list" aria-pressed="false" title="List view">List</button>
+          </div>
+          <a href="#main" class="chip" style="text-decoration:none">Top ↑</a>
+        </div>
+      </div>
+    </div>
+    <div class="list-grid" role="list" id="work-grid">
+      {items.map((it) => (
+        <article role="listitem" class="list-card has-thumb" data-year={it.data.year}>
+          <a href={`/work/${it.slug}`} class="a11y-link">
+            <div class="list-thumb"><img src={`/og/work-${it.slug}.png`} alt="" loading="lazy" decoding="async" /></div>
+            <h3>{it.data.title}</h3>
+            <div class="meta">
+              <span>{it.data.clientOrProject}</span>
+              <span>· {it.data.year}</span>
+            </div>
+            <p>{it.data.summary}</p>
+          </a>
+        </article>
+      ))}
+    </div>
+    <div class="more"><button id="load-more-work">Load more</button></div>
+  </section>
+  <script>
+    const workGrid = document.getElementById('work-grid');
+    const workCards = Array.from(workGrid?.children ?? []);
+    const PAGE = 12;
+    function paginateWork() { workCards.forEach((el, idx) => { const hidden = idx >= PAGE; el.classList.toggle('is-hidden', hidden); if (!hidden) el.classList.add('anim-in'); }); }
+    paginateWork();
+    document.getElementById('load-more-work')?.addEventListener('click', (event) => {
+      const hidden = workCards.filter((el) => el.classList.contains('is-hidden'));
+      hidden.slice(0, PAGE).forEach((el) => { el.classList.remove('is-hidden'); el.classList.add('anim-in'); });
+      if (hidden.length <= PAGE) {
+        const btn = event.target as HTMLButtonElement; btn.disabled = true; btn.textContent = 'All loaded';
+      }
+    });
+    const yearFilter = document.getElementById('year-filter');
+    yearFilter?.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-year]');
+      if (!btn) return;
+      const year = btn.getAttribute('data-year');
+      yearFilter.querySelectorAll('button').forEach((b) => b.classList.remove('chip--active'));
+      btn.classList.add('chip--active');
+      const showAll = year === 'all';
+      workCards.forEach((article) => {
+        const y = article.getAttribute('data-year');
+        const match = showAll || y === year;
+        article.classList.toggle('is-hidden', !match);
+      });
+      const visible = workCards.filter((el) => !el.classList.contains('is-hidden'));
+      visible.forEach((el, idx) => el.classList.toggle('is-hidden', idx >= PAGE));
+      const moreBtn = document.getElementById('load-more-work') as HTMLButtonElement | null;
+      if (moreBtn) {
+        moreBtn.disabled = visible.length <= PAGE;
+        moreBtn.textContent = visible.length <= PAGE ? 'All loaded' : 'Load more';
+      }
+      // Persist selection in hash like #year=2024
+      location.hash = year === 'all' ? '' : `year=${encodeURIComponent(year ?? '')}`;
+    });
+    // Restore year from hash on load
+    const m = location.hash.replace(/^#/, '').match(/^year=(.+)$/);
+    if (m) {
+      const y = decodeURIComponent(m[1]);
+      const btn = document.querySelector(`#year-filter button[data-year="${CSS.escape(y)}"]`) as HTMLButtonElement | null;
+      btn?.click();
+    }
+
+    // Layout toggle (grid vs list)
+    const toggle = document.getElementById('view-toggle');
+    const root = document.documentElement;
+    function applyView(v: string) {
+      root.classList.toggle('view-list', v === 'list');
+      root.classList.toggle('view-grid', v === 'grid');
+      toggle?.querySelectorAll('button').forEach((b) => {
+        const active = b.getAttribute('data-view') === v;
+        b.classList.toggle('chip--active', active);
+        b.setAttribute('aria-pressed', String(active));
+      });
+      localStorage.setItem('work:view', v);
+      document.querySelectorAll('#work-grid > article').forEach((card) => {
+        const hide = v === 'list';
+        card.querySelectorAll('.list-thumb, p').forEach((el) => {
+          if (hide) { el.setAttribute('aria-hidden', 'true'); } else { el.removeAttribute('aria-hidden'); }
+        });
+      });
+    }
+    toggle?.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-view]') as HTMLButtonElement | null;
+      if (!btn) return;
+      applyView(btn.getAttribute('data-view') || 'grid');
+    });
+    // Restore preference
+    applyView(localStorage.getItem('work:view') || 'grid');
+
+    // Structured data (ItemList of first page of work items)
+    try {
+      const links = Array.from(document.querySelectorAll('#work-grid > article a')).slice(0, 12);
+      if (links.length) {
+        const items = links.map((a, i) => ({
+          '@type': 'ListItem', position: i + 1, url: (a as HTMLAnchorElement).href, name: a.querySelector('h3')?.textContent?.trim() || 'Case study'
+        }));
+        const ld = document.createElement('script');
+        ld.type = 'application/ld+json';
+        ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: items });
+        document.head.appendChild(ld);
+      }
+    } catch {}
+  </script>
+</BaseLayout>
+

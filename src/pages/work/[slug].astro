@@ -1,0 +1,120 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection, getEntry } from 'astro:content';
+export async function getStaticPaths() {
+  const items = await getCollection('work');
+  return items.map((it) => ({ params: { slug: it.slug } }));
+}
+const { slug } = Astro.params;
+if (!slug) throw new Error('Missing slug');
+// @ts-ignore - content collection generic mismatch workaround
+const entry: any = await getEntry('work', slug);
+if (!entry) return Astro.redirect('/work');
+const { Content } = await entry.render();
+const relatedWriting: any = (await getCollection('writing')).find((w: any) => w.data.relatedWorkSlug === entry.slug);
+// Previous / next work entries (chronological by year then title)
+const allWork = await getCollection('work');
+allWork.sort((a: any, b: any) => {
+  if (a.data.year === b.data.year) return a.data.title.localeCompare(b.data.title);
+  return a.data.year - b.data.year;
+});
+const wIdx = allWork.findIndex((w: any) => w.slug === entry.slug);
+const prevWork = wIdx > 0 ? allWork[wIdx - 1] : null;
+const nextWork = wIdx >= 0 && wIdx < allWork.length - 1 ? allWork[wIdx + 1] : null;
+---
+<BaseLayout title={entry.data.title} description={entry.data.summary}>
+  <Fragment slot="head">
+    {(() => {
+      const slugStr = String(entry.slug);
+      const titleStr = String(entry.data.title);
+      const summaryStr = String(entry.data.summary || '');
+      const techList = entry.data.tech && entry.data.tech.length ? entry.data.tech.join(', ') : undefined;
+      const yearStr = entry.data.year ? `${entry.data.year}-01-01` : undefined;
+      const ld = [
+        {
+          '@context': 'https://schema.org',
+          '@type': 'CreativeWork',
+          headline: titleStr,
+          description: summaryStr,
+          author: { '@type': 'Person', name: 'Keyrxng' },
+          about: techList,
+          image: `https://keyrxng.xyz/og/work-${slugStr}.png`,
+          datePublished: yearStr,
+        },
+        {
+          '@context': 'https://schema.org',
+          '@type': 'BreadcrumbList',
+          itemListElement: [
+            { '@type': 'ListItem', position: 1, name: 'Work', item: 'https://keyrxng.xyz/work' },
+            { '@type': 'ListItem', position: 2, name: titleStr, item: `https://keyrxng.xyz/work/${slugStr}` },
+          ]
+        }
+      ];
+      return <>
+        <meta property="og:image" content={`/og/work-${slugStr}.png`} />
+        <meta name="twitter:image" content={`/og/work-${slugStr}.png`} />
+        <script type="application/ld+json" set:html={JSON.stringify(ld)}></script>
+      </>;
+    })()}
+  </Fragment>
+  <article class="prose">
+    <h1>{entry.data.title}</h1>
+    <p style="color:var(--color-muted)">{entry.data.clientOrProject} · {entry.data.year} · {entry.data.summary}</p>
+    {/* So what? — business impact callout near the top */}
+    {(() => {
+      const explicit = entry.data.soWhat as string | undefined;
+      function outcomesToLine() {
+        const os = entry.data.outcomes ?? [];
+        if (os.length === 0) return undefined;
+  // @ts-ignore - dynamic content typing
+  const items = os.slice(0, 3).map((o: any) => `${o.value}${o.unit ? ` ${o.unit}` : ''} ${o.metric}`);
+        return items.join(' · ');
+      }
+      const winsLine = (entry.data.wins && entry.data.wins.length > 0) ? entry.data.wins.slice(0, 3).join(' · ') : undefined;
+      const derived = outcomesToLine() ?? winsLine;
+      const text = explicit ?? derived ?? entry.data.summary;
+      return (
+        <div class="callout" style="border:1px solid color-mix(in oklab, var(--color-fg) 18%, transparent);padding: var(--space-4);border-radius: 8px;background: color-mix(in oklab, var(--color-fg) 6%, transparent);margin: var(--space-4) 0;">
+          <strong>So what?</strong>
+          <div style="margin-top:6px;color:var(--color-muted);">{text}</div>
+        </div>
+      );
+    })()}
+    <div class="meta-grid">
+      <div class="meta-item"><div class="meta-label">Role</div><div>{entry.data.role}</div></div>
+      <div class="meta-item"><div class="meta-label">Year</div><div>{entry.data.year}</div></div>
+      {entry.data.duration && (<div class="meta-item"><div class="meta-label">Duration</div><div>{entry.data.duration}</div></div>)}
+      {entry.data.tech && entry.data.tech.length > 0 && (<div class="meta-item"><div class="meta-label">Stack</div><div>{entry.data.tech.join(', ')}</div></div>)}
+    </div>
+    {relatedWriting && (
+      <div style="margin: var(--space-4) 0;">
+        <a class="btn" href={`/writing/${relatedWriting.slug}`}>Read narrative</a>
+      </div>
+    )}
+    {entry.data.outcomes && entry.data.outcomes.length > 0 && (
+      <div class="cluster" style="margin-top: var(--space-4);">
+  {/* @ts-ignore */}
+  {entry.data.outcomes.map((o: any) => (<span class="chip">{o.value}{o.unit ? ` ${o.unit}` : ''} {o.metric}</span>))}
+      </div>
+    )}
+    {(!entry.data.outcomes || entry.data.outcomes.length === 0) && entry.data.wins && entry.data.wins.length > 0 && (
+      <div class="cluster" style="margin-top: var(--space-4);">
+  {/* @ts-ignore */}
+  {entry.data.wins.map((w: string) => (<span class="chip">{w}</span>))}
+      </div>
+    )}
+    <Content />
+    {(prevWork || nextWork) && (
+      <nav class="cluster" style="justify-content:space-between;margin-top:var(--space-8);">
+        <div>
+          {prevWork && (<a href={`/work/${prevWork.slug}`} class="chip" rel="prev">← {prevWork.data.title}</a>)}
+        </div>
+        <div style="margin-left:auto;">
+          {nextWork && (<a href={`/work/${nextWork.slug}`} class="chip" rel="next">{nextWork.data.title} →</a>)}
+        </div>
+      </nav>
+    )}
+  </article>
+</BaseLayout>
+
+

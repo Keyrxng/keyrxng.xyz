@@ -1,0 +1,45 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection } from 'astro:content';
+export async function getStaticPaths() {
+  const posts = await getCollection('writing', ({ data }) => !data.hide);
+  const tags = new Set(posts.flatMap(p => p.data.tags || []));
+  return Array.from(tags).map((tag) => ({ params: { tag } }));
+}
+const { tag } = Astro.params;
+if (!tag) throw new Error('Missing tag');
+const posts = (await getCollection('writing', ({ data }) => !data.hide))
+  .filter(p => (p.data.tags || []).includes(tag))
+  .sort((a,b) => new Date(b.data.publishedAt).getTime() - new Date(a.data.publishedAt).getTime());
+const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { year:'numeric', month:'short', day:'numeric'});
+const canonical = `https://keyrxng.xyz/tags/${encodeURIComponent(tag as string)}`;
+---
+<BaseLayout title={`Tag: ${tag}`} description={`Posts tagged “${tag}” — technical essays, field notes, and reliability deep dives.`}>
+  <Fragment slot="head">
+    <link rel="canonical" href={canonical} />
+    <script type="application/ld+json" set:html={JSON.stringify({
+      '@context': 'https://schema.org',
+      '@type': 'CollectionPage',
+      name: `Posts tagged ${tag}`,
+      mainEntity: {
+        '@type': 'ItemList',
+        itemListElement: posts.map((p, i) => ({ '@type': 'ListItem', position: i + 1, url: `https://keyrxng.xyz/writing/${p.slug}`, name: p.data.title }))
+      }
+    })}></script>
+  </Fragment>
+  <section class="stack">
+    <h1>Tag: {tag}</h1>
+    {posts.length === 0 && (<p>No posts yet.</p>)}
+    <ul class="stack" style="list-style:none;padding:0;">
+      {posts.map((p) => (
+        <li>
+          <a href={`/writing/${p.slug}`} class="a11y-link">
+            <h2 style="margin:0">{p.data.title}</h2>
+            <div style="color:var(--color-muted);font-size:var(--font-size-2);">{formatDate(p.data.publishedAt)}{p.data.readingTime && ` · ${p.data.readingTime}`}</div>
+            <p style="color:var(--color-muted);margin:0">{p.data.summary}</p>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+</BaseLayout>

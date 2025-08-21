@@ -1,0 +1,331 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from 'astro:content';
+const posts = await getCollection('writing', ({ data }) => !data.hide);
+posts.sort((a, b) => new Date(b.data.publishedAt).getTime() - new Date(a.data.publishedAt).getTime());
+const formatDate = (d: string) => new Date(d).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' });
+const allTags = Array.from(new Set(posts.flatMap((p) => p.data.tags ?? []))).sort();
+const byYear = posts.reduce((acc, p) => {
+  const y = new Date(p.data.publishedAt).getFullYear();
+  (acc[y] ||= []).push(p);
+  return acc;
+}, {} as Record<number, typeof posts>);
+const years = Object.keys(byYear).map((n) => Number(n)).sort((a,b) => b - a);
+---
+<BaseLayout title="Writing" description="Writing by Kieran (Keyrxng): field notes, architectural patterns, reliability, testing, context shaping, and pragmatic post-mortems.">
+  <section class="stack">
+    <h1>Writing</h1>
+  <p class="prose">Curated essays: field notes, architectural pattern distillations, and honest post-mortems.</p>
+    <style>
+      /* Arcs view uses list-style rows (reuse list semantics) */
+      #arcs-view.is-hidden { display: none; }
+      #arcs-view { max-width: 70ch; }
+      #arcs-view .arc-section { margin-top: var(--space-7); }
+      #arcs-view .arc-section:first-child { margin-top: 0; }
+      #arcs-view .arc-section h2 { font-size: .75rem; letter-spacing:.6px; text-transform:uppercase; opacity:.65; margin:0 0 var(--space-2); }
+      #arcs-view .arc-section + .arc-section { border-top:1px solid var(--border, rgba(255,255,255,.08)); padding-top: var(--space-5); }
+      #arcs-view .arc-list { list-style:none; margin:0; padding:0; }
+      #arcs-view .arc-list article { padding:.65rem 0; border-bottom:1px solid var(--border, rgba(255,255,255,.06)); }
+      #arcs-view .arc-list article:last-child { border-bottom:none; }
+      #arcs-view .arc-list h3 { font-size:.95rem; margin:0 0 .25rem; font-weight:500; }
+      #arcs-view .arc-list .meta { font-size:.65rem; text-transform:uppercase; letter-spacing:.5px; opacity:.55; }
+  /* Month subhead styling */
+  .month-subhead { font-size:.6rem; letter-spacing:.5px; text-transform:uppercase; opacity:.55; margin: var(--space-4) 0 .25rem; padding-top: var(--space-4); border-top:1px solid var(--border, rgba(255,255,255,.06)); }
+  .month-subhead:first-child { border-top:none; padding-top:0; margin-top:0; }
+    </style>
+    <div class="subnav">
+      <div class="container cluster" style="justify-content: space-between; padding: 0;">
+  <!-- <div class="cluster" id="tag-filter" aria-label="Filter by tag" data-all-tags={JSON.stringify(allTags)}>
+          <button class="chip chip--selectable chip--active" data-tag="all" aria-pressed="true">All</button>
+          {allTags.slice(0, 10).map((t) => (<button class="chip chip--selectable" data-tag={t}>{t}</button>))}
+          {allTags.length > 10 && (<button class="chip chip--selectable" data-more="tags" aria-expanded="false" title="Show more tags">More…</button>)}
+        </div> -->
+        <div class="cluster" id="year-index" aria-label="Jump by year">
+          {years.map((y) => (<a href={`#y-${y}`} class="chip" style="text-decoration:none">{y}</a>))}
+        </div>
+        <div class="cluster view-toggle" id="view-toggle" role="group" aria-label="Layout toggle">
+          <button class="chip chip--selectable" data-view="grid" aria-pressed="false" title="Grid view">Grid</button>
+          <button class="chip chip--selectable chip--active" data-view="list" aria-pressed="true" title="List view">List</button>
+          <button class="chip chip--selectable" data-view="arcs" aria-pressed="false" title="Arc / thematic map view">Arcs</button>
+        </div>
+      </div>
+    </div>
+    <div id="chron-view">
+      {years.map((y) => (
+        <section class="stack" style="margin-top: var(--space-7);">
+          <h2 id={`y-${y}`} style="margin:0;">{y}</h2>
+          <div class="list-grid" role="list" id={`post-grid-${y}`}>
+            {(() => {
+              let lastMonth = -1;
+              return byYear[y].flatMap((post) => {
+                const d = new Date(post.data.publishedAt);
+                const month = d.getMonth();
+                const monthLabel = d.toLocaleDateString('en-US', { month: 'long' });
+                const nodes = [] as any[];
+                if (month !== lastMonth) {
+                  lastMonth = month;
+                  nodes.push(<div class="month-subhead" data-month={month}>{monthLabel}</div>);
+                }
+                nodes.push(
+                  <article role="listitem" class="list-card has-thumb" data-tags={(post.data.tags ?? []).join(',')}>
+                    <a href={`/writing/${post.slug}`} class="a11y-link">
+                      <div class="list-thumb"><img src={`/og/writing-${post.slug}.png`} alt="" loading="lazy" decoding="async" /></div>
+                      <h3>{post.data.title}</h3>
+                      <div class="meta">
+                        <span>{formatDate(post.data.publishedAt)}</span>
+                        {post.data.readingTime && (<span>· {post.data.readingTime}</span>)}
+                      </div>
+                      <p>{post.data.summary}</p>
+                      {post.data.tags && post.data.tags.length > 0 && (
+                        <div class="cluster chips">
+                          {post.data.tags.slice(0, 3).map((t) => (<a href={`/tags/${t}`} class="chip">{t}</a>))}
+                        </div>
+                      )}
+                      <div class="peek" aria-hidden="true">{post.data.tags?.slice(0, 5).join(' · ')}</div>
+                    </a>
+                  </article>
+                );
+                return nodes;
+              });
+            })()}
+          </div>
+          <div class="more"><button class="load-more-posts" data-year={y}>Load more</button></div>
+        </section>
+      ))}
+    </div>
+  <div id="arcs-view" class="stack is-hidden" style="margin-top: var(--space-7);">
+      {(() => {
+        // Define narrative arcs with explicit ordering
+        const arcs = {
+          // Foundational early confidence pieces establishing baseline capability & trust.
+          'Early Foundational Confidence': [
+            'anvil-custom-rpc-ui',
+            'production-safe-uups',
+            'gasless-onboarding',
+          ],
+          'Cryptography & Account Abstraction': [
+            'secure-permits-for-erc20-and-erc721',
+            'webauthn-account-abstraction',
+          ],
+          // Deep leverage of the type system for safer automation & evolvable contracts.
+          'Type System Leverage & Compiler Ergonomics': [
+            'type-safe-webhook-events',
+            'fixing-ts-union-explosions',
+            'type-system-patterns',
+          ],
+          // Forward-looking reliability, latency and performance architecture (building for future scale vs pure retrospective notes).
+          'Reliability & Performance Architecture': [
+            'automated-testing-infra',
+            'reliability-playbook',
+            'fail-fast-rpc-selection-for-real-apps',
+            'sub-second-payment-portal',
+            'payment-portal-ux-on-mobile-and-desktop',
+          ],
+          // Adaptive automation surfaces & lightweight human-in-the-loop workflow interventions.
+          'Adaptive Automation & Interaction Surfaces': [
+            'build-plugins-fast-with-a-template',
+            'install-plugins-in-the-browser',
+            'telegram-micro-kernel',
+            'start-stop-assignee-manager',
+            'guiding-contributors-in-no-reply-repos',
+          ],
+          // Temporal & context intelligence work: moving beyond static prompts into dynamic attention & time-aware recommenders.
+          'Temporal & Context Intelligence (Forward Systems)': [
+            'context-aware-answers-on-github',
+            'semantic-task-matchmaking',
+            'ghost-in-the-machine-part-1',
+            'ghost-in-the-machine-part-2',
+            'context-engineering',
+          ],
+          // Strategic & organizational framing, canonical references used by newer forward-looking pieces.
+          'Strategy, Operating Principles & Meta Canon': [
+            'origin-and-strategy',
+            'auto-sync-price-labels',
+            'organizational-lessons',
+          ],
+        };
+  const bySlug = Object.fromEntries(posts.map(p => [p.slug, p]));
+        return Object.entries(arcs).map(([title, slugs]) => (
+          <section class="arc-section">
+            <h2>{title}</h2>
+            <div class="arc-list" role="list">
+              {slugs.map((slug) => {
+                const post = bySlug[slug];
+                if (!post) return null;
+                return (
+                  <article role="listitem" data-tags={(post.data.tags ?? []).join(',')}>
+                    <a href={`/writing/${post.slug}`} class="a11y-link">
+                      <h3>{post.data.title}</h3>
+                      <div class="meta">
+                        <span>{formatDate(post.data.publishedAt)}</span>
+                        {post.data.readingTime && (<span>· {post.data.readingTime}</span>)}
+                      </div>
+                    </a>
+                  </article>
+                );
+              })}
+            </div>
+          </section>
+        ));
+      })()}
+    </div>
+  </section>
+  <script>
+    const PAGE = 12;
+    // Pagination per year section
+    document.querySelectorAll('[id^="post-grid-"]').forEach((grid) => {
+      const cards = Array.from(grid.querySelectorAll('article'));
+      cards.forEach((el, idx) => { const hidden = idx >= PAGE; el.classList.toggle('is-hidden', hidden); if (!hidden) el.classList.add('anim-in'); });
+    });
+    document.querySelectorAll('.load-more-posts').forEach((btn) => {
+      btn.addEventListener('click', (event) => {
+        const year = (event.target as HTMLElement).getAttribute('data-year');
+        const grid = document.getElementById(`post-grid-${year}`);
+        const cards = Array.from(grid?.querySelectorAll('article') ?? []);
+        const hidden = cards.filter((el) => el.classList.contains('is-hidden'));
+        hidden.slice(0, PAGE).forEach((el) => { el.classList.remove('is-hidden'); el.classList.add('anim-in'); });
+        if (hidden.length <= PAGE) {
+          const b = event.target as HTMLButtonElement; b.disabled = true; b.textContent = 'All loaded';
+        }
+      });
+    });
+
+    // Tag filtering across all sections; persist in hash
+    const filterWrap = document.getElementById('tag-filter');
+    // Expand remaining tags lazily to keep initial DOM lighter
+    function expandTags(){
+      if (!filterWrap) return;
+      const moreBtn = filterWrap.querySelector('button[data-more="tags"]');
+      if (!moreBtn) return;
+      const expanded = moreBtn.getAttribute('aria-expanded') === 'true';
+      if (expanded) return;
+      moreBtn.setAttribute('aria-expanded', 'true');
+      const frag = document.createDocumentFragment();
+      const remaining: string[] = JSON.parse(filterWrap.getAttribute('data-all-tags') || '[]').slice(10);
+      remaining.forEach((t: string) => {
+        const b = document.createElement('button');
+        b.className = 'chip chip--selectable';
+        b.dataset.tag = t;
+        b.textContent = t;
+        frag.appendChild(b);
+      });
+      moreBtn.before(frag);
+      moreBtn.remove();
+    }
+  function setHash(tag: string) { location.hash = tag === 'all' ? '' : `tag=${encodeURIComponent(tag)}`; }
+    function getHashTag() {
+      const h = location.hash.replace(/^#/, '');
+      if (!h) return 'all';
+      const m = h.match(/^tag=(.+)$/); return m ? decodeURIComponent(m[1]) : 'all';
+    }
+  function applyTag(tag: string) {
+      document.querySelectorAll('#tag-filter button').forEach((b) => b.classList.remove('chip--active'));
+      const btn = document.querySelector(`#tag-filter button[data-tag="${CSS.escape(tag)}"]`) as HTMLButtonElement | null;
+      (btn ?? document.querySelector('#tag-filter button[data-tag="all"]'))?.classList.add('chip--active');
+      const showAll = tag === 'all';
+      const allCards = Array.from(document.querySelectorAll('[id^="post-grid-"] > article'));
+      allCards.forEach((article) => {
+        const tags = (article.getAttribute('data-tags') || '').split(',').map((t) => t.trim()).filter(Boolean);
+        const match = showAll || tags.includes(tag);
+        article.classList.toggle('is-hidden', !match);
+        if (match) article.classList.add('anim-in');
+      });
+      // Re-apply pagination for each year independently after filter
+      document.querySelectorAll('[id^="post-grid-"]').forEach((grid) => {
+        const vis = Array.from(grid.children).filter((el) => !el.classList.contains('is-hidden'));
+        vis.forEach((el, idx) => el.classList.toggle('is-hidden', idx >= PAGE));
+        const year = grid.id.replace('post-grid-', '');
+        const btn = document.querySelector(`.load-more-posts[data-year="${year}"]`) as HTMLButtonElement | null;
+        if (btn) { btn.disabled = vis.length <= PAGE; btn.textContent = vis.length <= PAGE ? 'All loaded' : 'Load more'; }
+      });
+    }
+  // Serialize tags for expansion
+  if (filterWrap) filterWrap.setAttribute('data-all-tags', JSON.stringify(Array.from(new Set(Array.from(filterWrap.querySelectorAll('button[data-tag]')).map(b => b.getAttribute('data-tag') || '').filter(Boolean)))));
+  filterWrap?.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-tag]');
+      const more = (e.target as HTMLElement).closest('button[data-more="tags"]');
+      if (more) { expandTags(); return; }
+      if (!btn) return;
+      const tag = btn.getAttribute('data-tag') || 'all';
+      setHash(tag); applyTag(tag);
+    });
+    window.addEventListener('hashchange', () => applyTag(getHashTag()));
+    // Init from hash on first load
+    applyTag(getHashTag());
+    // Keyboard support for chips
+    filterWrap?.addEventListener('keydown', (e) => {
+      const target = e.target as HTMLElement;
+      if (e.key === 'Enter' || e.key === ' ') {
+        const btn = target.closest('button[data-tag]') as HTMLButtonElement | null; if (!btn) return;
+        e.preventDefault(); const tag = btn.getAttribute('data-tag') || 'all'; setHash(tag); applyTag(tag);
+      }
+    });
+    // ARIA live region for result counts
+    const live = document.createElement('div'); live.className = 'sr-only'; live.setAttribute('aria-live', 'polite'); document.body.appendChild(live);
+    function announceCount() {
+      const visible = document.querySelectorAll('[id^="post-grid-"] > article:not(.is-hidden)');
+      live.textContent = `${visible.length} posts shown`;
+    }
+    const observer = new MutationObserver(announceCount); observer.observe(document.body, { subtree: true, attributes: true, attributeFilter: ['class'] }); announceCount();
+
+    // Structured data (ItemList of recent posts)
+    try {
+      const firstSection = document.querySelector('[id^="post-grid-"]');
+      if (firstSection) {
+        const items = Array.from(document.querySelectorAll('[id^="post-grid-"] > article a')).slice(0, 10).map((a, i) => ({
+          '@type': 'ListItem',
+          position: i + 1,
+          url: (a as HTMLAnchorElement).href,
+          name: a.querySelector('h3')?.textContent?.trim() || 'Post'
+        }));
+        const ld = document.createElement('script');
+        ld.type = 'application/ld+json';
+        ld.textContent = JSON.stringify({ '@context': 'https://schema.org', '@type': 'ItemList', itemListElement: items });
+        document.head.appendChild(ld);
+      }
+    } catch {}
+
+    // Layout toggle
+    const toggle = document.getElementById('view-toggle');
+    const root = document.documentElement;
+    function applyView(v: string) {
+      const valid = ['grid','list','arcs'];
+  if (!valid.includes(v)) v = 'list';
+  const isList = v === 'list';
+  const isGrid = v === 'grid';
+  const isArcs = v === 'arcs';
+  // Treat arcs as list variant for global layout styling
+  root.classList.toggle('view-list', isList || isArcs);
+      root.classList.toggle('view-grid', isGrid);
+      root.classList.toggle('view-arcs', isArcs);
+      toggle?.querySelectorAll('button').forEach((b) => {
+        const active = b.getAttribute('data-view') === v;
+        b.classList.toggle('chip--active', active);
+        b.setAttribute('aria-pressed', String(active));
+      });
+      localStorage.setItem('writing:view', v);
+      // Show/hide chron vs arcs containers
+      document.getElementById('chron-view')?.classList.toggle('is-hidden', isArcs);
+      document.getElementById('arcs-view')?.classList.toggle('is-hidden', !isArcs);
+      document.getElementById('tag-filter')?.classList.toggle('is-hidden', isArcs);
+      document.getElementById('year-index')?.classList.toggle('is-hidden', isArcs);
+      document.querySelectorAll('.more').forEach((el) => el.classList.toggle('is-hidden', isArcs));
+      // Accessibility: suppress non-essential content in list view only
+      // In both list + arcs views we collapse to minimal line items
+      const hideExtras = isList || isArcs;
+      document.querySelectorAll('[id^="post-grid-"] article').forEach((card) => {
+        card.querySelectorAll('.list-thumb, p, .chips, .peek').forEach((el) => {
+          if (hideExtras) { el.setAttribute('aria-hidden', 'true'); } else { el.removeAttribute('aria-hidden'); }
+        });
+      });
+    }
+    toggle?.addEventListener('click', (e) => {
+      const btn = (e.target as HTMLElement).closest('button[data-view]') as HTMLButtonElement | null;
+      if (!btn) return;
+      applyView(btn.getAttribute('data-view') || 'grid');
+    });
+  // Default first-time view preference: show thematic arcs instead of chronological list
+  applyView(localStorage.getItem('writing:view') || 'arcs');
+  </script>
+</BaseLayout>
+

@@ -1,0 +1,90 @@
+---
+interface Props {
+  title?: string;
+  description?: string;
+  theme?: 'atelier';
+}
+const { title = 'Site', description = '', theme } = Astro.props as Props;
+const siteUrl = 'https://keyrxng.xyz';
+const pathname = Astro.url.pathname;
+const bodyClass = pathname === '/' ? 'home theme-atelier' : (theme === 'atelier' ? 'theme-atelier' : undefined);
+---
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="generator" content={Astro.generator} />
+    <title>{title}</title>
+    <meta name="description" content={description} />
+    <meta name="color-scheme" content="light dark" />
+    <link rel="canonical" href={siteUrl + Astro.url.pathname} />
+    <link rel="alternate" type="application/rss+xml" title="Keyrxng — Writing" href="/rss.xml" />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+    <meta property="og:url" content={siteUrl + Astro.url.pathname} />
+    <meta name="twitter:card" content="summary_large_image" />
+    <meta name="theme-color" media="(prefers-color-scheme: light)" content="#f7f7f5" />
+    <meta name="theme-color" media="(prefers-color-scheme: dark)" content="#0a0a0a" />
+    <script type="application/ld+json" set:html={JSON.stringify([
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Person',
+        name: 'Keyrxng',
+        url: siteUrl,
+        sameAs: [
+          'https://github.com/keyrxng',
+          'https://www.linkedin.com/in/keyrxng'
+        ]
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'WebSite',
+        name: 'Keyrxng',
+        url: siteUrl,
+        potentialAction: {
+          '@type': 'SearchAction',
+          target: `${siteUrl}/search?q={search_term_string}`,
+          'query-input': 'required name=search_term_string'
+        }
+      }
+    ])}></script>
+    <meta property="og:image" content="/og/default.png" />
+    <meta name="twitter:image" content="/og/default.png" />
+    <slot name="head" />
+    <link rel="icon" href="/favicon.svg" />
+    <link rel="stylesheet" href="/global.css" />
+  </head>
+  <body class={bodyClass}>
+    <a href="#main" class="skip-link">Skip to content</a>
+    <header class="site">
+      <div class="container cluster" style="justify-content: space-between; padding: var(--space-4) 0;">
+        <a href="/" aria-label="Home" style="font-weight: 600;" aria-current={pathname === '/' ? 'page' : undefined}>Keyrxng</a>
+        <nav class="cluster" aria-label="Primary">
+          <a href="/work" aria-current={pathname.startsWith('/work') ? 'page' : undefined}>Work</a>
+          <a href="/writing" aria-current={pathname.startsWith('/writing') ? 'page' : undefined}>Writing</a>
+          <a href="/stack" aria-current={pathname.startsWith('/stack') ? 'page' : undefined}>Stack</a>
+          <a href="/about" aria-current={pathname.startsWith('/about') ? 'page' : undefined}>About</a>
+          <a href="/contact" aria-current={pathname.startsWith('/contact') ? 'page' : undefined}>Contact</a>
+        </nav>
+      </div>
+    </header>
+    <main id="main" class="container" style="padding: var(--space-8) 0;">
+      <slot />
+    </main>
+    <footer class="site">
+      <div class="container" style="display:flex;justify-content:space-between;align-items:center;gap:var(--space-4);padding:var(--space-6) 0;">
+        <span style="color:var(--color-muted)">© {new Date().getFullYear()} keyrxng</span>
+        <div class="cluster">
+          <a href="/privacy" style="color:var(--color-muted)">Privacy</a>
+          <a href="/rss.xml" style="color:var(--color-muted)">RSS</a>
+          <a href="mailto:keyrxng@proton.me" style="color:var(--color-muted)">Email</a>
+          <a href="https://github.com/keyrxng" target="_blank" rel="me noopener" style="color:var(--color-muted)">GitHub</a>
+          <a href="https://www.linkedin.com/in/keyrxng" target="_blank" rel="me noopener" style="color:var(--color-muted)">LinkedIn</a>
+        </div>
+      </div>
+    </footer>
+  </body>
+</html>
+
+

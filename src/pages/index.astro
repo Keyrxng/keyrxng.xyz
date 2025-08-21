@@ -1,16 +1,224 @@
 ---
-
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from 'astro:content';
+const work = await getCollection('work');
+const posts = await getCollection('writing');
+const latestWork = work.sort((a, b) => Number(b.data.featured) - Number(a.data.featured)).slice(0, 3);
+const latestPosts = posts
+  .sort((a, b) => new Date(b.data.publishedAt).getTime() - new Date(a.data.publishedAt).getTime())
+  .slice(0, 3);
 ---
+  <BaseLayout title="Keyrxng — Software engineer: AI, Web3, systems & tooling" description="I design and harden pragmatic software systems across AI, Web3, and tooling—shipping fast without sacrificing reliability.">
+  <section style="max-width: var(--container-wide);">
+    <div style="display: grid; grid-template-columns: 1fr 300px; gap: var(--space-8); align-items: start; margin-bottom: var(--space-8);">
+      <div class="stack">
+  <h1 style="font-size: clamp(40px, 6vw, 56px);line-height:1.1;margin:0 0 var(--space-5);">Ship dependable software under real constraints.</h1>
+  <p style="color:var(--color-muted);font-size: var(--font-size-4);margin:0">I turn ambiguous problem space into operating systems: sub-second payment surfaces, zero-failure RPC rotation, safe upgrade paths, and calmer release pipelines. Pragmatic first—measure, harden, move.</p>
+  <p style="color:var(--color-muted);margin: var(--space-2) 0 var(--space-6); font-size: var(--font-size-2);">UK timezone · replies within 48h · currently taking new work</p>
+        <div class="cluster" style="margin-top: var(--space-4);">
+          <a class="primary" href="/work">See work</a>
+          <a class="ghost" href="/contact">Contact</a>
+          <a class="ghost" href="/stack">Stack</a>
+        </div>
+      </div>
+      <div style="width: 300px; height: 300px; border-radius: 50%; overflow: hidden; background: color-mix(in oklab, var(--color-fg) 8%, transparent); display: grid; place-items: center;">
+        <img 
+          src="/kieran-patton-portrait.jpg" 
+          alt="Portrait of Kieran Patton" 
+          width="300" height="300"
+          style="display: block; width: 100%; height: 100%; object-fit: cover;" 
+          loading="eager"
+        />
+      </div>
+    </div>
+  </section>
 
-<html lang="en">
-	<head>
-		<meta charset="utf-8" />
-		<link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-		<meta name="viewport" content="width=device-width" />
-		<meta name="generator" content={Astro.generator} />
-		<title>Astro</title>
-	</head>
-	<body>
-		<h1>Astro</h1>
-	</body>
-</html>
+  <div class="divider divider--soft divider--spaced" role="presentation"></div>
+
+  <section class="stack" style="margin-top:var(--space-7);">
+    <div class="cluster rotator-row" style="gap: var(--space-5); color: var(--color-muted); flex-wrap: nowrap; align-items: flex-start;">
+      <div class="label-viewport"><span class="rotator-label">Problems I solve:</span></div>
+      <div class="rotator-viewport" style="overflow:hidden;">
+        <div class="cluster rotator-chips" style="gap: var(--space-5); flex-wrap: wrap;"></div>
+      </div>
+    </div>
+    <style>
+      .rotator-row { align-items: center; }
+      .label-viewport { display: inline-grid; overflow: hidden; }
+      .rotator-label { display: inline-block; will-change: clip-path, opacity; }
+      .rotator-viewport { display: grid; }
+      .rotator-chips { will-change: transform, opacity; }
+      .slide-up-out { animation: slideUpOut 300ms ease forwards; }
+      .slide-up-in { animation: slideUpIn 300ms ease forwards; }
+      .label-wipe-out { animation: wipeLeftOut 300ms ease forwards; }
+      .label-wipe-in { animation: wipeLeftIn 300ms ease forwards; }
+      @keyframes slideUpOut { from { transform: translateY(0); opacity: 1; } to { transform: translateY(-12px); opacity: 0; } }
+      @keyframes slideUpIn { from { transform: translateY(12px); opacity: 0; } to { transform: translateY(0); opacity: 1; } }
+      @keyframes wipeLeftOut { from { clip-path: inset(0 0 0 0); opacity: 1; } to { clip-path: inset(0 100% 0 0); opacity: 0.6; } }
+      @keyframes wipeLeftIn { from { clip-path: inset(0 100% 0 0); opacity: 0.6; } to { clip-path: inset(0 0 0 0); opacity: 1; } }
+    </style>
+    <script>
+      (function(){
+        const sets = [
+          {
+            label: 'Problems I solve:',
+            items: [
+              'Automate knowledge workflows',
+              'Harden crypto-native flows',
+              'Tame distributed systems',
+              'Ship fast on constrained infra',
+            ],
+          },
+          {
+            label: 'Verticals:',
+            items: [
+              'AI products',
+              'Crypto protocols',
+              'Developer tooling',
+              'Distributed systems',
+              'Platforms & infra',
+              'Public sector & OSS',
+            ],
+          },
+        ];
+
+  const labelEl = document.querySelector<HTMLElement>('.rotator-label');
+  const chipsEl = document.querySelector<HTMLElement>('.rotator-chips');
+  const viewportEl = document.querySelector<HTMLElement>('.rotator-viewport');
+  if (!labelEl || !chipsEl || !viewportEl) return;
+
+        let idx = 0;
+        function render(set: { label: string; items: string[] }){
+          labelEl!.textContent = set.label;
+          chipsEl!.innerHTML = set.items.map((t: string) => `<span class=\"chip\">${t}</span>`).join('');
+        }
+
+        // Initial render and height lock to avoid layout shift
+        render(sets[idx]);
+        requestAnimationFrame(() => {
+          const height = chipsEl!.offsetHeight;
+          viewportEl!.style.height = height + 'px';
+        });
+
+        function rotate(){
+          // Animate current out
+          labelEl!.classList.remove('label-wipe-in');
+          labelEl!.classList.add('label-wipe-out');
+          chipsEl!.classList.remove('slide-up-in');
+          chipsEl!.classList.add('slide-up-out');
+          const onOut = () => {
+            chipsEl!.removeEventListener('animationend', onOut);
+            // Advance index and render next
+            idx = (idx + 1) % sets.length;
+            render(sets[idx]);
+            // Recalc height in case this set is taller
+            viewportEl!.style.height = chipsEl!.offsetHeight + 'px';
+            // Animate next in
+            labelEl!.classList.remove('label-wipe-out');
+            labelEl!.classList.add('label-wipe-in');
+            chipsEl!.classList.remove('slide-up-out');
+            chipsEl!.classList.add('slide-up-in');
+            const onIn = () => {
+              chipsEl!.removeEventListener('animationend', onIn);
+              chipsEl!.classList.remove('slide-up-in');
+            };
+            chipsEl!.addEventListener('animationend', onIn, { once: true });
+          };
+          chipsEl!.addEventListener('animationend', onOut, { once: true });
+        }
+
+        const intervalMs = 6000;
+        let timer = setInterval(rotate, intervalMs);
+
+        // Pause on hover/focus for readability
+        viewportEl.addEventListener('mouseenter', () => { clearInterval(timer); });
+        viewportEl.addEventListener('mouseleave', () => { timer = setInterval(rotate, intervalMs); });
+        viewportEl.addEventListener('focusin', () => { clearInterval(timer); });
+        viewportEl.addEventListener('focusout', () => { timer = setInterval(rotate, intervalMs); });
+      })();
+    </script>
+  </section>
+
+  <div class="divider divider--spaced" role="presentation"></div>
+
+  <section class="stack" style="margin-top:var(--space-9);">
+    <h2 style="margin:0">Latest writing</h2>
+  <p style="color:var(--color-muted);margin:0">Field notes and deep dives on reliability, context shaping, and shipping with less drama.</p>
+    <ul class="stack" style="list-style:none;padding:0;" data-reveal-list>
+      {latestPosts.map((post) => (
+        <li class="reveal-item">
+          <a href={`/writing/${post.slug}`} class="a11y-link">
+            <h3 style="margin:0">{post.data.title}</h3>
+            <div style="display:flex;gap:10px;color:var(--color-muted);font-size:var(--font-size-2);">
+              <span>{new Date(post.data.publishedAt).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' })}</span>
+              {post.data.readingTime && (<span>· {post.data.readingTime}</span>)}
+            </div>
+            <p style="color:var(--color-muted);margin:0">{post.data.summary}</p>
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  <div class="divider divider--spaced" role="presentation"></div>
+
+  <section class="stack" style="margin-top:var(--space-9);">
+    <h2 style="margin:0">Selected work</h2>
+  <p style="color:var(--color-muted);margin:0">Selected engagements—constraints, choices, and verifiable outcomes.</p>
+    <style>
+      .reveal-item { opacity: 0; transform: translateX(-12px); transition: transform 400ms ease, opacity 400ms ease; }
+      .reveal-item.is-visible { opacity: 1; transform: none; }
+      @media (prefers-reduced-motion: reduce) { .reveal-item { transition: none; opacity: 1; transform: none; } }
+    </style>
+    <ul class="stack" style="list-style:none;padding:0;" data-reveal-list>
+      {latestWork.map((it) => (
+        <li class="reveal-item">
+          <a href={`/work/${it.slug}`} class="a11y-link">
+            <h3 style="margin:0">{it.data.title}</h3>
+            <p style="color:var(--color-muted);margin:0">{it.data.summary}</p>
+            {it.data.outcomes && it.data.outcomes.length > 0 ? (
+              <div class="cluster" style="gap: var(--space-3);">
+                {it.data.outcomes.slice(0, 2).map((o) => (
+                  <span class="chip">{o.value}{o.unit ? ` ${o.unit}` : ''} {o.metric}</span>
+                ))}
+              </div>
+            ) : (it.data.wins && it.data.wins.length > 0 && (
+              <div class="cluster" style="gap: var(--space-3);">
+                {it.data.wins.slice(0, 2).map((w) => (
+                  <span class="chip">{w}</span>
+                ))}
+              </div>
+            ))}
+          </a>
+        </li>
+      ))}
+    </ul>
+  </section>
+
+  
+  <div class="divider divider--spaced" role="presentation"></div>
+  <script>
+    (function(){
+      const items = document.querySelectorAll('.reveal-item');
+      if (!items.length) return;
+      const prefersReduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
+      const observer = new IntersectionObserver((entries) => {
+        entries.forEach((entry) => {
+          if (entry.isIntersecting) {
+            const el = entry.target;
+            if (!prefersReduced) {
+              // small micro-delay to feel responsive without batching
+              setTimeout(() => el.classList.add('is-visible'), 0);
+            } else {
+              el.classList.add('is-visible');
+            }
+            observer.unobserve(el);
+          }
+        });
+      }, { threshold: 0.2, rootMargin: '0px 0px -10% 0px' });
+      items.forEach((el) => observer.observe(el));
+    })();
+  </script>
+
+  
+</BaseLayout>

@@ -1,0 +1,272 @@
+---
+import BaseLayout from "../layouts/BaseLayout.astro";
+import { getCollection } from "astro:content";
+let comps = await getCollection("competencies");
+// Pinned first, then alphabetical
+comps = comps.sort(
+  (a, b) =>
+    Number(b.data.pinned) - Number(a.data.pinned) ||
+    a.data.name.localeCompare(b.data.name),
+);
+---
+
+<BaseLayout
+  title="About"
+  description="About Kieran (Keyrxng) — systems engineer focused on pragmatic reliability, upgrade safety, testing, and calm release tooling."
+  theme="atelier"
+>
+  <article class="stack">
+    <section class="about-hero">
+      <div class="stack">
+        <h1>Hey — I'm Kieran. I design and harden pragmatic systems.</h1>
+        <p>
+          Edge agents, safe upgrade paths, sub-second payment flows, and release
+          toolchains that make shipping calm. Clear constraints in; verifiable
+          results out.
+        </p>
+        <h2>How I work</h2>
+
+        <ul>
+          <li>
+            Start with constraints and outcomes: agree the target, budget, and
+            latency/error budgets up front.
+          </li>
+          <li>
+            Design explicit data flows and boundaries; favor boring tech and
+            narrow surfaces.
+          </li>
+          <li>
+            Ship thin slices to production, observe, then harden based on real
+            usage.
+          </li>
+          <li>
+            Make constrained runtimes work (Workers/ESM); solve crypto
+            primitives pragmatically with compatibility.
+          </li>
+          <li>
+            Fast-fail: bounded timeouts, latency-ranked selection, retries that
+            users don't pay for.
+          </li>
+          <li>
+            Reproducible environments: local forks, wallet stubs, deterministic
+            CI; logs and coverage in PRs.
+          </li>
+        </ul>
+
+        <h2>Origin</h2>
+        <p>
+          Left home at 16. Finished a four-year skilled trade apprenticeship in
+          three. Pivoted into software after seven years with daily ships, ruthless focus, and a
+          notebook full of experiments. That stretch felt like a “lonely
+          chapter” — outgrowing old circles before finding new peers. The habit
+          that stuck: earn results first, narrate later.
+        </p>
+        <p>
+          The trade mindset carried over: respect constraints, reduce waste,
+          ship increments, observe reality, then harden. It still anchors how I
+          approach uncertain domains (AI context shaping, cryptographic infra,
+          upgrade safety).
+        </p>
+
+        <h2>Highlights</h2>
+        <ul>
+          <li>Maintainer of a flagship Web3 payment portal.</li>
+          <li>
+            Built and maintained RPC infrastructure (RPC Handler NPM pkg) used
+            across apps.
+          </li>
+          <li>
+            Developer relations: onboarding (100+ devs), documentation, and
+            tooling leadership.
+          </li>
+          <li>
+            Progression: ~12 months contributing in OSS → joined the team →
+            reached skilled-trade salary parity within three months.
+          </li>
+        </ul>
+
+        <p class="about-footer-note">
+          I stepped back from grind-mode to rebuild curiosity. The work is
+          better when it starts from play and lands as calm reliability.
+        </p>
+      </div>
+      <aside class="stack" style="gap: var(--space-4);">
+        <div class="about-portrait">
+          <img
+            src="/kieran-patton-portrait.jpg"
+            alt="Portrait of Kieran Patton"
+            width="320"
+            height="320"
+            style="display: block; width: 100%; height: 100%; object-fit: cover;"
+            loading="lazy"
+          />
+        </div>
+        <div>
+          <h3 style="margin:0">Quick facts</h3>
+          <ul>
+            <li>Coffee — two and a coo for me</li>
+            <li>Cat — fist-bumps on cue</li>
+            <li>Music — sax; Metal, EDM, lo-fi, hip-hop</li>
+            <li>
+              Top TV — The Expanse, Stargate, Silicon Valley, Prison Break,
+              Colony / Falling Skies
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="margin:0">Habits</h3>
+          <ul>
+            <li>Weekly phone screen time stays under an hour.</li>
+            <li>No socials — especially no doom-scrolling videos.</li>
+            <li>Watching gamers > playing; modding and hacking > Watching.</li>
+            <li>
+              Old career: 30k+ steps/day, five days a week. Now I'm lucky to hit
+              30k in a quarter.
+            </li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="margin:0">Listening to</h3>
+          <ul>
+            <li>Diary of a CEO — Steven Bartlett</li>
+            <li>PrimeTime — ThePrimeagen</li>
+            <li>Lex Fridman Podcast</li>
+            <li>The Game — Alex Hormozi</li>
+            <li>Need to Know — Ross Coulthart & Bryce Zabel</li>
+          </ul>
+        </div>
+        <div>
+          <h3 style="margin:0">Adoption (RPC handler)</h3>
+          <Fragment>
+            {
+              await (async () => {
+                const { default: DownloadsChart } = await import(
+                  "../components/DownloadsChart.astro"
+                );
+                return <DownloadsChart />;
+              })()
+            }
+          </Fragment>
+        </div>
+      </aside>
+    </section>
+
+    <style>
+      .about-hero > .stack:first-child {
+        max-width: var(--container-narrow);
+      }
+      .about-hero {
+        display: grid;
+        grid-template-columns: minmax(0, 1fr) 320px;
+        gap: var(--space-8);
+        align-items: start;
+        margin-bottom: var(--space-8);
+      }
+      /* Make left column a flex column so the reflective note can pin to bottom */
+      .about-hero > .stack:first-child {
+        display: flex;
+        flex-direction: column;
+      }
+      .about-footer-note {
+        color: var(--color-muted);
+        margin: 0;
+        margin-top: auto;
+        padding-top: var(--space-6);
+        max-width: 60ch;
+      }
+      .about-portrait {
+        width: 100%;
+        max-width: 320px;
+        aspect-ratio: 1 / 1;
+        border-radius: 24px;
+        overflow: hidden;
+        background: color-mix(in oklab, var(--color-fg) 8%, transparent);
+        display: grid;
+        place-items: center;
+      }
+      .about-hero h2 {
+        margin-top: var(--space-6);
+      }
+      .about-hero ul {
+        margin: 0;
+        padding-left: 1.1rem;
+      }
+      .about-hero li {
+        margin: 4px 0;
+      }
+      @media (max-width: 900px) {
+        .about-hero {
+          grid-template-columns: 1fr;
+        }
+        .about-portrait {
+          max-width: 420px;
+        }
+        /* On narrow screens let the note flow naturally */
+        .about-footer-note {
+          margin-top: var(--space-6);
+          padding-top: 0;
+        }
+      }
+    </style>
+
+    <div class="divider divider--spaced" role="presentation"></div>
+
+    <h2>Competencies</h2>
+    <p style="color:var(--color-muted);margin:0">
+      Operating lanes: each anchors on early constraint framing, thin-slice
+      sequencing, and observable outcomes.
+    </p>
+    <div class="comp-grid">
+      {
+        comps.map((c) => (
+          <div class="comp-card">
+            <div class="comp-title">{c.data.name}</div>
+            <div class="comp-sub">{c.data.summary}</div>
+            <ul>
+              {c.data.bullets.map((b) => (
+                <li>{b}</li>
+              ))}
+            </ul>
+            {(c.data.relatedWorkSlugs?.length ||
+              c.data.relatedWritingSlugs?.length) && (
+              <div class="chips" style="margin-top:8px;">
+                {c.data.relatedWorkSlugs?.slice(0, 2).map((slug) => (
+                  <a
+                    href={`/work/${slug}`}
+                    class="chip"
+                    title={`Case study: ${slug}`}
+                  >
+                    Case: {slug}
+                  </a>
+                ))}
+                {c.data.relatedWritingSlugs?.slice(0, 2).map((slug) => (
+                  <a
+                    href={`/writing/${slug}`}
+                    class="chip"
+                    title={`Essay: ${slug}`}
+                  >
+                    Essay: {slug}
+                  </a>
+                ))}
+              </div>
+            )}
+          </div>
+        ))
+      }
+    </div>
+
+    <div class="divider divider--spaced" role="presentation"></div>
+
+    <h2>What next</h2>
+    <p>
+      Have a reliability, edge, or integration constraint you want de-risked?
+      Let's frame it and ship a first slice.
+    </p>
+    <div class="cluster" style="margin-top: var(--space-2);">
+      <a class="primary" href="/work">See work</a>
+      <a class="ghost" href="/contact">Contact</a>
+      <a class="ghost" href="/stack">Stack</a>
+      <a class="ghost" href="/writing">Writing</a>
+    </div>
+  </article>
+</BaseLayout>

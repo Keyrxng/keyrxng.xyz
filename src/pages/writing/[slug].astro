@@ -1,0 +1,97 @@
+---
+import BaseLayout from "../../layouts/BaseLayout.astro";
+import { getCollection, getEntry } from 'astro:content';
+export async function getStaticPaths() {
+  const posts = await getCollection('writing');
+  return posts.map((post) => ({ params: { slug: post.slug } }));
+}
+const { slug } = Astro.params;
+if (!slug) throw new Error('Missing slug');
+const fetched = await getEntry('writing', slug as string);
+if (!fetched) return Astro.redirect('/writing');
+const entry: any = fetched; // non-null guaranteed; relaxed typing due to content collection generics
+const { Content } = await entry.render();
+
+let linkedWorkPiece: Awaited<ReturnType<typeof getEntry>> | null = null;
+if (entry.data.relatedWorkSlug) {
+  linkedWorkPiece = await getEntry('work', entry.data.relatedWorkSlug);
+}
+
+// Prev / next posts (by date)
+const allPosts = await getCollection('writing');
+allPosts.sort((a: any, b: any) => new Date(a.data.publishedAt).getTime() - new Date(b.data.publishedAt).getTime());
+const idx = allPosts.findIndex((p: any) => p.slug === entry.slug);
+const prev = idx > 0 ? allPosts[idx - 1] : null;
+const next = idx >= 0 && idx < allPosts.length - 1 ? allPosts[idx + 1] : null;
+
+---
+<BaseLayout title={entry.data.title} description={entry.data.summary}>
+  <Fragment slot="head">
+    <meta property="og:image" content={`/og/writing-${entry.slug}.png`} />
+    <meta name="twitter:image" content={`/og/writing-${entry.slug}.png`} />
+    <script type="application/ld+json" set:html={JSON.stringify([
+      {
+        '@context': 'https://schema.org',
+        '@type': 'Article',
+        mainEntityOfPage: { '@type': 'WebPage', '@id': `https://keyrxng.xyz/writing/${entry.slug}` },
+        headline: entry.data.title,
+        datePublished: entry.data.publishedAt,
+        dateModified: entry.data.updatedAt ?? entry.data.publishedAt,
+        description: entry.data.summary,
+        author: { '@type': 'Person', name: 'Keyrxng' },
+        image: `https://keyrxng.xyz/og/writing-${entry.slug}.png`,
+        keywords: (entry.data.tags && entry.data.tags.length > 0) ? entry.data.tags.join(', ') : undefined,
+        publisher: { '@type': 'Organization', name: 'Keyrxng', logo: { '@type': 'ImageObject', url: 'https://keyrxng.xyz/favicon.svg' } },
+      },
+      {
+        '@context': 'https://schema.org',
+        '@type': 'BreadcrumbList',
+        itemListElement: [
+          { '@type': 'ListItem', position: 1, name: 'Writing', item: 'https://keyrxng.xyz/writing' },
+          { '@type': 'ListItem', position: 2, name: entry.data.title, item: `https://keyrxng.xyz/writing/${entry.slug}` },
+        ]
+      }
+    ])}></script>
+  </Fragment>
+  <article class="prose">
+    <h1>{entry.data.title}</h1>
+    <p style="color:var(--color-muted);margin:0 0 var(--space-6);">{new Date(entry.data.publishedAt).toLocaleDateString()} · {entry.data.readingTime}</p>
+    {/* So what? — business impact callout near the top */}
+    {(() => {
+      const explicit = entry.data.soWhat as string | undefined;
+      // Attempt to derive from related work outcomes/wins if not explicitly set
+      const derived = undefined;
+      const text = explicit ?? derived ?? entry.data.summary;
+      return (
+        <div class="callout" style="border:1px solid color-mix(in oklab, var(--color-fg) 18%, transparent);padding: var(--space-4);border-radius: 8px;background: color-mix(in oklab, var(--color-fg) 6%, transparent);margin: var(--space-4) 0;">
+          <strong>So what?</strong>
+          <div style="margin-top:6px;color:var(--color-muted);">{text}</div>
+        </div>
+      );
+    })()}
+    {/* TL;DR callout retained but moved after the So what? for prominence */}
+  {entry.data.relatedWorkSlug && linkedWorkPiece && (
+      <p style="margin-top: -8px;">
+        See the related case study: <a href={`/work/${entry.data.relatedWorkSlug}`}>{linkedWorkPiece.data.title}</a>
+      </p>
+    )}
+    {entry.data.tags && entry.data.tags.length > 0 && (
+      <div class="cluster" style="gap: var(--space-3); margin: var(--space-4) 0;">
+        {entry.data.tags.map((t: string) => (<a href={`/tags/${t}`} class="chip">{t}</a>))}
+      </div>
+    )}
+    <Content />
+    {(prev || next) && (
+      <nav class="cluster" style="justify-content:space-between;margin-top:var(--space-8);">
+        <div>
+          {prev && (<a href={`/writing/${prev.slug}`} class="chip" rel="prev">← {prev.data.title}</a>)}
+        </div>
+        <div style="margin-left:auto;">
+          {next && (<a href={`/writing/${next.slug}`} class="chip" rel="next">{next.data.title} →</a>)}
+        </div>
+      </nav>
+    )}
+  </article>
+</BaseLayout>
+
+
