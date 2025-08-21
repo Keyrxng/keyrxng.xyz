@@ -1,0 +1,13 @@
+{
+  "name": "Collaboration systems",
+  "summary": "Wire chat, issues & CI so work stays observable, auditable, and rewardable.",
+  "bullets": [
+    "Bridging chat ⇄ issues ⇄ CI",
+    "Workflow dispatch & automation",
+    "Auditable workrooms"
+  ],
+  "relatedWorkSlugs": ["telegram-micro-kernel"],
+  "relatedWritingSlugs": ["bridging-collaboration-channels"]
+}
+
+

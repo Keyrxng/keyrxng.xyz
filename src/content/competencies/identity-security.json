@@ -1,0 +1,22 @@
+{
+  "name": "Identity & security",
+  "summary": "Ship auth, recovery & permit flows users trust and auditors can reason about.",
+  "bullets": [
+    "Passkeys / WebAuthn onboarding",
+    "Deterministic accounts + recovery paths",
+    "Risk-first threat modeling"
+  ],
+  "relatedWorkSlugs": [
+    "webauthn-aa",
+    "permit-generation",
+    "uups-upgradeability"
+  ],
+  "relatedWritingSlugs": [
+    "webauthn-account-abstraction",
+    "secure-permits-for-erc20-and-erc721",
+    "production-safe-uups"
+  ],
+  "pinned": true
+}
+
+

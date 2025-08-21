@@ -1,0 +1,26 @@
+{
+  "name": "Edge architectures",
+  "summary": "Exploit constrained runtimes (Workers/serverless) for predictable, low-overhead delivery.",
+  "bullets": [
+    "Workers & serverless trade-off mapping",
+    "Edge crypto primitives & key handling",
+    "Dataflow & cache strategy for hot paths"
+  ],
+  "relatedWorkSlugs": [
+    "libsodium-worker",
+    "telegram-micro-kernel",
+    "command-ask",
+    "web3-faucet",
+    "plugin-installer"
+  ],
+  "relatedWritingSlugs": [
+    "bridging-collaboration-channels",
+    "hybrid-plugin-architecture-reflections",
+    "gasless-onboarding",
+    "install-plugins-in-the-browser",
+    "context-aware-answers-on-github"
+  ],
+  "pinned": true
+}
+
+

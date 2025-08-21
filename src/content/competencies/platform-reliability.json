@@ -1,0 +1,24 @@
+{
+  "name": "Platform & reliability",
+  "summary": "Design latency-budgeted, observable systems that fail fast and recover quietly.",
+  "bullets": [
+    "Latency & error budget tracking",
+    "Operational simplicity (reduce moving parts)",
+    "Preemptive failure design (guardrails & invariants)"
+  ],
+  "relatedWorkSlugs": [
+    "rpc-handler",
+    "libsodium-worker",
+    "payment-portal-performance",
+    "daemon-responder",
+    "global-base-rate-sync"
+  ],
+  "relatedWritingSlugs": [
+    "libsodium-in-cloudflare-worker",
+    "sub-second-payment-portal",
+    "auto-sync-price-labels"
+  ],
+  "pinned": true
+}
+
+

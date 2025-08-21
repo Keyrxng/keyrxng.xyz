@@ -1,0 +1,29 @@
+{
+  "name": "Product engineering",
+  "summary": "Sequence thin slices to de-risk early, then compound into durable product value.",
+  "bullets": [
+    "Constraint-driven decision framing",
+    "Scope control & sequencing",
+    "Thin slices → measurable outcomes"
+  ],
+  "relatedWorkSlugs": [
+    "rpc-handler",
+    "webauthn-aa",
+    "payment-portal-performance",
+    "plugin-installer",
+    "automated-testing",
+    "plugin-template"
+  ],
+  "relatedWritingSlugs": [
+    "fail-fast-rpc-selection-for-real-apps",
+    "webauthn-account-abstraction",
+    "sub-second-payment-portal",
+    "payment-portal-ux-on-mobile-and-desktop",
+    "automated-testing-infra",
+    "build-plugins-fast-with-a-template",
+    "context-aware-answers-on-github"
+  ],
+  "pinned": true
+}
+
+

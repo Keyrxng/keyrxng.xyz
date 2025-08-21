@@ -1,0 +1,23 @@
+{
+  "name": "Protocol integrations (Web3)",
+  "summary": "Make on-chain interaction feel native: fast paths, graceful degradation, safe retries.",
+  "bullets": [
+    "Wallet & signing UX without leakage",
+    "Multi-chain RPC strategy + graceful fallbacks",
+    "Event indexing & idempotent jobs"
+  ],
+  "relatedWorkSlugs": [
+    "rpc-handler",
+    "payment-portal-ux",
+    "payment-portal-performance",
+    "web3-faucet"
+  ],
+  "relatedWritingSlugs": [
+    "fail-fast-rpc-selection-for-real-apps",
+    "payment-portal-ux-on-mobile-and-desktop",
+    "sub-second-payment-portal",
+    "gasless-onboarding"
+  ]
+}
+
+
