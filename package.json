@@ -1,14 +1,33 @@
 {
-  "name": "site",
+  "name": "keyrxng-xyz",
   "type": "module",
-  "version": "0.0.1",
+  "version": "0.1.0",
+  "description": "Keyrxng — Product-focused engineering.",
+  "author": {
+    "email": "keyrxng@proton.me",
+    "name": "Keyrxng",
+    "url": "https://keyrxng.xyz"
+  },
   "scripts": {
     "dev": "astro dev",
     "build": "astro build",
     "preview": "astro preview",
-    "astro": "astro"
+    "astro": "astro",
+    "test": "vitest",
+    "seo:audit": "npx --yes tsx scripts/seo-audit.ts --root ./dist --out ./seo-report.json",
+    "seo:audit:stdout": "tsx scripts/seo-audit.ts --root ./dist --stdout"
   },
   "dependencies": {
-    "astro": "^5.12.9"
+    "@astrojs/mdx": "^4.3.3",
+    "@resvg/resvg-js": "^2.6.2",
+    "astro": "^5.12.9",
+    "satori": "^0.16.2"
+  },
+  "devDependencies": {
+    "@astrojs/rss": "^4.0.12",
+    "@astrojs/sitemap": "^3.4.2",
+    "cheerio": "^1.1.2",
+    "stemmer": "^1.0.5",
+    "vitest": "^3.2.4"
   }
 }
