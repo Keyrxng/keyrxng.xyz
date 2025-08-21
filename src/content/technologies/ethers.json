@@ -1,0 +1,12 @@
+{
+  "name": "Ethers",
+  "category": "library",
+  "area": "web3",
+  "group": "Web3",
+  "icon": "/tech-icons/ethers.svg",
+  "notes": "Feature-rich EVM library with mature ecosystem.",
+  "links": [{ "label": "Docs", "url": "https://docs.ethers.org" }],
+  "relatedWorkSlugs": ["rpc-handler"]
+}
+
+

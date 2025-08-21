@@ -1,0 +1,14 @@
+{
+  "name": "libsodium",
+  "category": "library",
+  "area": "cryptography",
+  "group": "Cryptography",
+  "icon": "/tech-icons/libsodium.webp",
+  "notes": "Modern, easy-to-use crypto library derived from NaCl.",
+  "links": [
+    { "label": "Site", "url": "https://libsodium.org" }
+  ],
+  "relatedWorkSlugs": ["libsodium-worker"]
+}
+
+

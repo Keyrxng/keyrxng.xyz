@@ -1,0 +1,12 @@
+{
+  "name": "V8 (Cloudflare)",
+  "category": "runtime",
+  "area": "platform",
+  "group": "Runtimes",
+  "icon": "/tech-icons/v8.svg",
+  "notes": "Isolated V8 runtime underpinning Workers execution.",
+  "links": [{ "label": "Workers Runtime", "url": "https://developers.cloudflare.com/workers/runtime-apis" }],
+  "relatedWorkSlugs": ["libsodium-worker"]
+}
+
+

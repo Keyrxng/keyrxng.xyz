@@ -1,0 +1,14 @@
+{
+  "name": "tweetnacl.js",
+  "category": "library",
+  "area": "cryptography",
+  "group": "Cryptography",
+  "icon": "/tech-icons/tweetnacl.svg",
+  "notes": "Lightweight crypto primitives based on NaCl.",
+  "links": [
+    { "label": "Repo", "url": "https://github.com/dchest/tweetnacl-js" }
+  ],
+  "relatedWorkSlugs": ["libsodium-worker"]
+}
+
+

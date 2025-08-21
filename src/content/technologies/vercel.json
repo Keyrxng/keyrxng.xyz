@@ -1,0 +1,12 @@
+{
+  "name": "Vercel",
+  "category": "platform",
+  "area": "frontend",
+  "group": "Web & Platform",
+  "icon": "/tech-icons/vercel.svg",
+  "notes": "Deploy targets and previews for Next.js and edge functions.",
+  "links": [{ "label": "Docs", "url": "https://vercel.com/docs" }],
+  "relatedWorkSlugs": []
+}
+
+

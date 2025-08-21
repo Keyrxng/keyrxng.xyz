@@ -1,0 +1,12 @@
+{
+  "name": "huggingface",
+  "category": "platform",
+  "area": "ai",
+  "group": "AI",
+  "icon": "/tech-icons/huggingface.svg",
+  "notes": "Models, datasets, and Spaces for hosting demos.",
+  "links": [{ "label": "Hub", "url": "https://huggingface.co" }],
+  "relatedWorkSlugs": []
+}
+
+

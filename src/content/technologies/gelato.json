@@ -1,0 +1,12 @@
+{
+  "name": "Gelato",
+  "category": "platform",
+  "area": "web3",
+  "group": "Blockchain",
+  "icon": "/tech-icons/gelato.svg",
+  "notes": "Automation, relaying, and web3 infrastructure services.",
+  "links": [{ "label": "Docs", "url": "https://docs.gelato.network/" }],
+  "relatedWorkSlugs": []
+}
+
+

@@ -1,0 +1,10 @@
+{
+  "name": "OpenZeppelin (Defender & Relay)",
+  "category": "platform",
+  "area": "web3",
+  "group": "Blockchain",
+  "icon": "/tech-icons/openzeppelin.svg",
+  "notes": "Security tooling, ops automation, and relayer services.",
+  "links": [{ "label": "Docs", "url": "https://docs.openzeppelin.com/" }],
+  "relatedWorkSlugs": []
+}

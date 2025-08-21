@@ -1,0 +1,12 @@
+{
+  "name": "Supabase",
+  "category": "platform",
+  "area": "data",
+  "group": "Data",
+  "icon": "/tech-icons/supabase.svg",
+  "notes": "Hosted Postgres, auth, and storage for rapid product work.",
+  "links": [{ "label": "Docs", "url": "https://supabase.com/docs" }],
+  "relatedWorkSlugs": []
+}
+
+

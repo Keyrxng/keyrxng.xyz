@@ -1,0 +1,12 @@
+{
+  "name": "Bun",
+  "category": "runtime",
+  "area": "platform",
+  "group": "Runtimes",
+  "icon": "/tech-icons/bun.svg",
+  "notes": "Fast JavaScript runtime and toolkit used for dev speed.",
+  "links": [{ "label": "Docs", "url": "https://bun.sh/docs" }],
+  "relatedWorkSlugs": []
+}
+
+

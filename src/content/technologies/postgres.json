@@ -1,0 +1,12 @@
+{
+  "name": "PostgreSQL",
+  "category": "database",
+  "area": "data",
+  "group": "Data",
+  "icon": "/tech-icons/postgres.webp",
+  "notes": "Relational database for transactional workloads.",
+  "links": [{ "label": "Docs", "url": "https://www.postgresql.org/docs/" }],
+  "relatedWorkSlugs": []
+}
+
+

@@ -1,0 +1,12 @@
+{
+  "name": "Next.js",
+  "category": "framework",
+  "area": "frontend",
+  "group": "Web & Platform",
+  "icon": "/tech-icons/nextjs.svg",
+  "notes": "App Router, SSR/ISR, and API routes for product work.",
+  "links": [{ "label": "Docs", "url": "https://nextjs.org/docs" }],
+  "relatedWorkSlugs": []
+}
+
+

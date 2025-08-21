@@ -1,0 +1,12 @@
+{
+  "name": "SQLite",
+  "category": "database",
+  "area": "data",
+  "group": "Data",
+  "icon": "/tech-icons/sqlite.svg",
+  "notes": "Embedded SQL database for lightweight applications.",
+  "links": [{ "label": "Docs", "url": "https://www.sqlite.org/docs.html" }],
+  "relatedWorkSlugs": []
+}
+
+

@@ -1,0 +1,12 @@
+{
+  "name": "Foundry",
+  "category": "platform",
+  "area": "web3",
+  "group": "Blockchain",
+  "icon": "/tech-icons/foundry.png",
+  "notes": "Ethereum development toolchain (forge, cast, anvil).",
+  "links": [{ "label": "Book", "url": "https://book.getfoundry.sh/" }],
+  "relatedWorkSlugs": []
+}
+
+

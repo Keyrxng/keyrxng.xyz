@@ -1,0 +1,14 @@
+{
+  "name": "GitHub Actions",
+  "category": "platform",
+  "area": "backend",
+  "group": "Web & Platform",
+  "icon": "/tech-icons/github.svg",
+  "notes": "Free long-lived compute proxy and workflow automation for CI/CD and scheduled jobs.",
+  "links": [
+    { "label": "Docs", "url": "https://docs.github.com/actions" }
+  ],
+  "relatedWorkSlugs": ["telegram-micro-kernel"]
+}
+
+

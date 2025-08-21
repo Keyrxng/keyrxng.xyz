@@ -1,0 +1,12 @@
+{
+  "name": "Wagmi",
+  "category": "library",
+  "area": "web3",
+  "group": "Web3",
+  "icon": "/tech-icons/wagmi.svg",
+  "notes": "React hooks for Ethereum apps built on Viem.",
+  "links": [{ "label": "Docs", "url": "https://wagmi.sh" }],
+  "relatedWorkSlugs": ["rpc-handler"]
+}
+
+

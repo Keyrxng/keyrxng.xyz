@@ -1,0 +1,14 @@
+{
+  "name": "Cloudflare Workers",
+  "category": "platform",
+  "area": "backend",
+  "group": "Web & Platform",
+  "icon": "/tech-icons/cloudflare.svg",
+  "notes": "Edge runtime for serverless apps, APIs, and workers.",
+  "links": [
+    { "label": "Docs", "url": "https://developers.cloudflare.com/workers/" }
+  ],
+  "relatedWorkSlugs": ["libsodium-worker", "telegram-micro-kernel"]
+}
+
+

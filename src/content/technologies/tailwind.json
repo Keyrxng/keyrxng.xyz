@@ -1,0 +1,12 @@
+{
+  "name": "Tailwind CSS",
+  "category": "framework",
+  "area": "frontend",
+  "group": "Web & Platform",
+  "icon": "/tech-icons/tailwindcss.svg",
+  "notes": "Utility-first styling paired with design tokens.",
+  "links": [{ "label": "Docs", "url": "https://tailwindcss.com/docs" }],
+  "relatedWorkSlugs": []
+}
+
+

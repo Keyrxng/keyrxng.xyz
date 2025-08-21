@@ -1,0 +1,12 @@
+{
+  "name": "Docker",
+  "category": "infra",
+  "area": "backend",
+  "group": "Web & Platform",
+  "icon": "/tech-icons/docker.svg",
+  "notes": "Containerized dev/test environments and reproducible builds.",
+  "links": [{ "label": "Docs", "url": "https://docs.docker.com" }],
+  "relatedWorkSlugs": []
+}
+
+

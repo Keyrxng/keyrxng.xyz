@@ -1,0 +1,14 @@
+{
+  "name": "Crypto Wallet (EOA/AA)",
+  "category": "spec",
+  "area": "auth",
+  "group": "Auth",
+  "icon": "/tech-icons/ethers.svg",
+  "notes": "Externally Owned Accounts and Account Abstraction patterns for auth.",
+  "links": [
+    { "label": "EIP-4337", "url": "https://eips.ethereum.org/EIPS/eip-4337" }
+  ],
+  "relatedWorkSlugs": ["rpc-handler"]
+}
+
+

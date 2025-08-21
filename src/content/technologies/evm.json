@@ -1,0 +1,14 @@
+{
+  "name": "Ethereum Virtual Machine",
+  "category": "runtime",
+  "area": "web3",
+  "group": "Runtimes",
+  "icon": "/tech-icons/ethereum.svg",
+  "notes": "Smart contract execution on EVM-compatible chains.",
+  "links": [
+    { "label": "Yellow Paper", "url": "https://ethereum.github.io/yellowpaper/paper.pdf" }
+  ],
+  "relatedWorkSlugs": ["rpc-handler"]
+}
+
+

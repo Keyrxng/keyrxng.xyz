@@ -1,0 +1,12 @@
+{
+  "name": "Auth.js",
+  "category": "library",
+  "area": "auth",
+  "group": "Auth",
+  "icon": "/tech-icons/authjs.svg",
+  "notes": "Authentication for modern web apps with OAuth/OIDC.",
+  "links": [{ "label": "Docs", "url": "https://authjs.dev" }],
+  "relatedWorkSlugs": []
+}
+
+

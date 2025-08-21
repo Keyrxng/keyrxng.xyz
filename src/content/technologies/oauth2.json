@@ -1,0 +1,12 @@
+{
+  "name": "OAuth 2.0",
+  "category": "spec",
+  "area": "auth",
+  "group": "Auth",
+  "icon": "/tech-icons/oauth.svg",
+  "notes": "Industry-standard authorization protocol and flows.",
+  "links": [{ "label": "Spec", "url": "https://datatracker.ietf.org/doc/html/rfc6749" }],
+  "relatedWorkSlugs": []
+}
+
+

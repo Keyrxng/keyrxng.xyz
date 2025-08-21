@@ -1,0 +1,12 @@
+{
+  "name": "Viem",
+  "category": "library",
+  "area": "web3",
+  "group": "Web3",
+  "icon": "/tech-icons/viem.webp",
+  "notes": "Type-safe, lightweight client for interacting with EVM chains.",
+  "links": [{ "label": "Docs", "url": "https://viem.sh" }],
+  "relatedWorkSlugs": ["rpc-handler"]
+}
+
+

@@ -1,0 +1,12 @@
+{
+  "name": "LangChain",
+  "category": "library",
+  "area": "ai",
+  "group": "AI",
+  "icon": "/tech-icons/langchain.svg",
+  "notes": "Composable chains used for RAG and tool-using agents.",
+  "links": [{ "label": "Docs", "url": "https://js.langchain.com" }],
+  "relatedWorkSlugs": ["rpc-handler"]
+}
+
+

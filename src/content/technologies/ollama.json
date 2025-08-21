@@ -1,0 +1,12 @@
+{
+  "name": "Ollama",
+  "category": "platform",
+  "area": "ai",
+  "group": "AI",
+  "icon": "/tech-icons/ollama.png",
+  "notes": "Local models for rapid prototyping and private inference.",
+  "links": [{ "label": "Docs", "url": "https://ollama.com" }],
+  "relatedWorkSlugs": []
+}
+
+

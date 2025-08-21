@@ -1,0 +1,15 @@
+{
+  "name": "Alchemy x Gnosis",
+  "category": "platform",
+  "area": "web3",
+  "group": "Web3",
+  "icon": "/tech-icons/alchemy.svg",
+  "notes": "RPC infra and multi-sig/account management for production web3 apps.",
+  "links": [
+    { "label": "Alchemy", "url": "https://www.alchemy.com/" },
+    { "label": "Gnosis Safe", "url": "https://gnosis-safe.io/" }
+  ],
+  "relatedWorkSlugs": ["rpc-handler"]
+}
+
+

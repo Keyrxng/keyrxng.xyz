@@ -1,0 +1,12 @@
+{
+  "name": "Cypress & Jest",
+  "category": "framework",
+  "area": "testing",
+  "icon": "/tech-icons/jest-cypress-split.svg",
+  "notes": "Unit tests with Jest; E2E and component tests with Cypress.",
+  "links": [
+    { "label": "Jest", "url": "https://jestjs.io/docs" },
+    { "label": "Cypress", "url": "https://docs.cypress.io" }
+  ],
+  "relatedWorkSlugs": []
+}

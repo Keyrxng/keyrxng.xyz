@@ -1,0 +1,12 @@
+{
+  "name": "Polkadot SDK",
+  "category": "platform",
+  "area": "web3",
+  "group": "Blockchain",
+  "icon": "/tech-icons/polkadot.svg",
+  "notes": "Framework for building custom blockchains and runtimes (Previously Substrate).",
+  "links": [{ "label": "Docs", "url": "https://docs.substrate.io/" }],
+  "relatedWorkSlugs": []
+}
+
+

@@ -1,0 +1,14 @@
+{
+  "name": "Web Crypto API",
+  "category": "api",
+  "area": "cryptography",
+  "group": "Cryptography",
+  "icon": "/tech-icons/w3c.webp",
+  "notes": "Standards-based crypto in browsers and Workers (SubtleCrypto).",
+  "links": [
+    { "label": "MDN", "url": "https://developer.mozilla.org/en-US/docs/Web/API/Web_Crypto_API" }
+  ],
+  "relatedWorkSlugs": ["libsodium-worker"]
+}
+
+

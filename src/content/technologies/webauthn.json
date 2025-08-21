@@ -1,0 +1,13 @@
+{
+  "name": "WebAuthn API",
+  "category": "api",
+  "area": "auth",
+  "group": "Auth",
+  "icon": "/tech-icons/webauthn.svg",
+  "notes": "Passkey-based authentication using public-key credentials.",
+  "links": [
+    { "label": "Spec", "url": "https://www.w3.org/TR/webauthn-3/" },
+    { "label": "MDN", "url": "https://developer.mozilla.org/en-US/docs/Web/API/Web_Authentication_API" }
+  ],
+  "relatedWorkSlugs": ["webauthn-aa"]
+}

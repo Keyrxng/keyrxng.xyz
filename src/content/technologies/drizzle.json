@@ -1,0 +1,12 @@
+{
+  "name": "Drizzle ORM",
+  "category": "library",
+  "area": "data",
+  "group": "Data",
+  "icon": "/tech-icons/drizzle.webp",
+  "notes": "Type-safe SQL toolkit and migrations for Postgres/SQLite.",
+  "links": [{ "label": "Docs", "url": "https://orm.drizzle.team" }],
+  "relatedWorkSlugs": []
+}
+
+

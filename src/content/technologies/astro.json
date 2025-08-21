@@ -1,0 +1,12 @@
+{
+  "name": "Astro",
+  "category": "framework",
+  "area": "frontend",
+  "group": "Web & Platform",
+  "icon": "/tech-icons/astro.svg",
+  "notes": "Content-focused framework used to build this site.",
+  "links": [{ "label": "Docs", "url": "https://docs.astro.build/" }],
+  "relatedWorkSlugs": []
+}
+
+

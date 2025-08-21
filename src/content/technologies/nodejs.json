@@ -1,0 +1,12 @@
+{
+  "name": "Node.js",
+  "category": "runtime",
+  "area": "platform",
+  "group": "Runtimes",
+  "icon": "/tech-icons/nodejs.svg",
+  "notes": "Primary server-side runtime for tooling and services.",
+  "links": [{ "label": "Docs", "url": "https://nodejs.org/en/docs" }],
+  "relatedWorkSlugs": ["rpc-handler", "telegram-micro-kernel"]
+}
+
+

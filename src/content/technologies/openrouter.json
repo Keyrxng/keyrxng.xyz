@@ -1,0 +1,12 @@
+{
+  "name": "OpenRouter",
+  "category": "platform",
+  "area": "ai",
+  "group": "AI",
+  "icon": "/tech-icons/openrouter.svg",
+  "notes": "Multi-model gateway for LLMs used in agents and RAG.",
+  "links": [{ "label": "Docs", "url": "https://openrouter.ai/docs" }],
+  "relatedWorkSlugs": []
+}
+
+
