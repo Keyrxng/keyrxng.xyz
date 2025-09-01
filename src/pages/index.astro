@@ -3,7 +3,6 @@ import BaseLayout from "../layouts/BaseLayout.astro";
 import { getCollection } from 'astro:content';
 const work = await getCollection('work');
 const posts = await getCollection('writing');
-const latestWork = work.sort((a, b) => Number(b.data.featured) - Number(a.data.featured)).slice(0, 3);
 const latestPosts = posts
   .sort((a, b) => new Date(b.data.publishedAt).getTime() - new Date(a.data.publishedAt).getTime())
   .slice(0, 3);
