@@ -130,8 +130,9 @@ const years = Object.keys(byYear).map((n) => Number(n)).sort((a,b) => b - a);
             'guiding-contributors-in-no-reply-repos',
           ],
           // Temporal & context intelligence work: moving beyond static prompts into dynamic attention & time-aware recommenders.
-          'Temporal & Context Intelligence (Forward Systems)': [
-            'context-aware-answers-on-github',
+          'Temporal & Context Engineering (Forward Systems)': [
+          '12-factor-agents',  
+          'context-aware-answers-on-github',
             'semantic-task-matchmaking',
             'ghost-in-the-machine-part-1',
             'ghost-in-the-machine-part-2',
@@ -325,7 +326,7 @@ const years = Object.keys(byYear).map((n) => Number(n)).sort((a,b) => b - a);
       applyView(btn.getAttribute('data-view') || 'grid');
     });
   // Default first-time view preference: show thematic arcs instead of chronological list
-  applyView(localStorage.getItem('writing:view') || 'arcs');
+  applyView(localStorage.getItem('writing:view') || 'list');
   </script>
 </BaseLayout>
 

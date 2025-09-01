@@ -1,0 +1,97 @@
+---
+title: "Why I Like the 12-Factor Agents"
+description: "A concise, practical take on the 12‑Factor Agents and why the constraints matter, what to implement first, and where I'm applying them."
+publishedAt: "2025-09-01"
+date: "2025-09-01"
+summary: "A concise, practical take on the 12-Factor Agents and why the constraints matter, what to implement first, and where I'm applying them."
+tags: ["12-factor", "agents", "context-engineering", "practical"]
+readingTime: "4 min"
+---
+
+## TL;DR
+
+You can view HumanLayer's original specification [here](https://github.com/humanlayer/12-factor-agents/blob/main/README.md).
+
+The 12‑Factor Agents framework is a small set of constraints that turns fragile LLM experiments into repeatable engineering. This piece explains the core ideas plainly, lists immediate engineering steps you can apply, and briefly points to my related GitHub projects for implementation reference.
+The 12‑Factor Agents approach and context engineering are about making those small constraints explicit so systems behave the same under load.
+
+## What the 12 factors actually buy you
+Think of the framework like a checklist for building a trustworthy workshop rather than a one-off magic trick. Instead of "tweak prompts until it works," you get repeatable practices that reduce surprises in production:
+
+- Explicit prompt versioning: you can audit, test, and roll-back conversational behavior.
+- Context as a first-class input: the system only sees exactly what it needs, when it needs it.
+- Clear tool boundaries: integrations are explicit, composable, and testable.
+- Stateless agent logic and explicit state stores: predictable scaling and easier testing.
+- Human-in-the-loop as a supported tool call: safe, auditable escalation when needed.
+
+## ELI18: an everyday explanation
+Imagine building a helpful coworker instead of a mysterious robot. The 12 factors are the rules that make that coworker dependable:
+
+- Keep the instructions written down and versioned so you can check what you told them.
+- Don’t dump everything on their desk—give them only the papers they need for the task.
+- Make every external thing they can use (APIs, search, memory) a clearly labeled tool.
+- Separate their short-term thinking from long-term memory so they don't mix up tasks.
+- When they screw up, give them a way to show the error and try again safely.
+
+These rules make the coworker useful over months, not just impressive for a demo.
+
+
+### Field note — Early lessons in Context Engineering
+I worked on a GitHub integrated context-aware chatbot prototype that initially was boxed into deep, unbounded expansion of linked issues, PRs, and diffs. That design repeatedly produced noisy, expensive context windows and made debugging difficult. I covered it in "[Bringing an AI coworker onto GitHub](/writing/context-aware-answers-on-github)" but that iterative rewrite: moving to depth-bounded retrieval, stronger ordering (promoting the question), and focused QA loops. Those practical changes informed how I think about depth, budgeting, and observability in small, testable constraints.
+
+
+## Why engineers enjoy this approach
+The framework converts vague experimentation into small engineering problems you can iterate on: token budgets, memory granularity, indices, reproducible prompt experiments, and safe rollouts. That shift transforms LLM work from fragile fiddling into rewarding architecture and product work.
+
+## Why I like these rules
+I've hand-rolled my own agents and also used frameworks. I prefer rolling my own most of the time because it forces clarity — and the more control you have over internals the better, especially for debugging. Reading the 12 factors and hearing the phrase "context engineering" was a small revelation: it put language to instincts I already had. That warm recognition — "oh, this is what I've been doing, but much better" — is a big part of why the framework resonates with me.
+
+## Where I'm applying this now
+I'm building Cortex, a fully local, audio/text-enabled agentic system that mixes modern GraphRAG patterns with careful context engineering: tight memory objects, explicit retrieval contracts, and local-first tooling so privacy and latency work in your favor. Cortex is an exercise in the 12‑factor mindset — small, testable components, explicit prompt versioning, and reversible memory condensations.
+
+## Tiny engineer's contract (inputs/outputs/error modes)
+- Inputs: natural-language query, explicit context bundle (user, session, relevant entity ids), available toolset.
+- Outputs: deterministic action (tool calls / final text) plus a trace/log of prompts and context used.
+- Error modes: tool failure, parsing ambiguity, stale memory. All should return structured errors and safe fallbacks.
+
+## Practical checklist to apply right now
+- Make prompt changes explicit and put them under version control.
+- Add a small context envelope type and pass it everywhere the agent runs.
+- Add label/property/vector indices for the graph store and prefer the most selective index first.
+- Implement a simple temporal edge scheme (validFrom/validUntil) and LRU cache for node loading.
+- Add a human-approval tool as an explicit call, not an ad-hoc exception path.
+
+## Edge cases to watch
+- Missing or malformed context (validate early).
+- Very large expansions during traversal—bound depth and node counts.
+- Duplicate entity merges creating noisy graphs—use conservative thresholds.
+- Prompt drift from silent local edits—require PRs for behavioral changes.
+
+## How I verify success (quick tests)
+- Unit test: given a fixed prompt revision + context bundle, the agent produces identical tool call sequence and output.
+- Integration smoke: load a small JSONL graph, run a query that must hit label + vector indices, measure response correctness and latency.
+- Monitoring: track index hit rate, memory cache hit rate, and entity-resolution accuracy over time.
+
+
+## Closing
+
+Small constraints win. The 12‑Factor rules are deliberately narrow — version prompts, budget context, separate logic from state, and make human approvals plain and testable. They don't promise glamour; they promise repeatability.
+
+If you take one thing from this: keep behavioral changes in source control, treat context as an explicit, bounded envelope, and iterate at the sentence level when answers drift. Those tiny feedback loops are where reliability actually happens.
+
+
+---
+
+_Good context engineering isn't about feeding the model more — it's about deciding what the model never needs to read._
+
+## See also
+
+- Twelve Factor Agents: [GitHub Repository](https://github.com/humanlayer/12-factor-agents)
+- AI Engineer World's Fair: [12-factor-agents](https://www.youtube.com/watch?v=8kMaTybvDUw)
+
+- Context engineering (tooling and token budgeting): [/writing/context-engineering](/writing/context-engineering)
+- The Ghost's footprint (temporal resistance): [/writing/ghost-in-the-machine-part-1](/writing/ghost-in-the-machine-part-1)
+- Bringing an AI coworker onto GitHub: [/writing/context-aware-answers-on-github](/writing/context-aware-answers-on-github)
+- Code references: 
+ - - [Keyrxng/cortex](https://github.com/keyrxng/cortex)
+ - - [Keyrxng/agentic-memory](https://github.com/keyrxng/agentic-memory)

@@ -7,6 +7,47 @@ const latestWork = work.sort((a, b) => Number(b.data.featured) - Number(a.data.f
 const latestPosts = posts
   .sort((a, b) => new Date(b.data.publishedAt).getTime() - new Date(a.data.publishedAt).getTime())
   .slice(0, 3);
+
+// Fetch a small selection of public GitHub repositories at build time.
+// Respects an optional GITHUB_TOKEN (import.meta.env or process.env) to avoid strict rate limits.
+const githubUser = 'Keyrxng';
+const githubToken = import.meta.env.GITHUB_TOKEN || process.env.GITHUB_TOKEN;
+let latestRepos: {
+  name: string;
+  description: string;
+  url: string;
+  language: string;
+  stars: number;
+  homepage: string;
+}[] = [];
+try {
+  const headers = githubToken
+    ? { Authorization: `token ${githubToken}`, Accept: 'application/vnd.github+json' }
+    : { Accept: 'application/vnd.github+json' };
+  const url = `https://api.github.com/users/${githubUser}/repos?per_page=6&sort=updated`;
+  const init: RequestInit = { headers: headers as HeadersInit };
+  const res = await fetch(url, init);
+  if (res.ok) {
+    const data = await res.json();
+    latestRepos = Array.isArray(data)
+      ? data
+          .filter((r) => !r.fork)
+          .slice(0, 4)
+          .map((r) => ({
+            name: r.name,
+            description: r.description,
+            url: r.html_url,
+            language: r.language,
+            stars: r.stargazers_count,
+            homepage: r.homepage,
+          }))
+      : [];
+  } else {
+    console.warn('Failed to fetch GitHub repos:', res.status, await res.text());
+  }
+} catch (err) {
+  console.warn('Error fetching GitHub repos:', err);
+}
 ---
   <BaseLayout title="Keyrxng — Software engineer: AI, Web3, systems & tooling" description="I design and harden pragmatic software systems across AI, Web3, and tooling—shipping fast without sacrificing reliability.">
   <section style="max-width: var(--container-wide);">
@@ -163,36 +204,57 @@ const latestPosts = posts
   <div class="divider divider--spaced" role="presentation"></div>
 
   <section class="stack" style="margin-top:var(--space-9);">
-    <h2 style="margin:0">Selected work</h2>
-  <p style="color:var(--color-muted);margin:0">Selected engagements—constraints, choices, and verifiable outcomes.</p>
+    <h2 style="margin:0">Latest projects</h2>
+    <p style="color:var(--color-muted);margin:0">
+      Whether for fun, learning, or production, here are some of my most recently active public GitHub repositories.
+    </p>
     <style>
-      .reveal-item { opacity: 0; transform: translateX(-12px); transition: transform 400ms ease, opacity 400ms ease; }
-      .reveal-item.is-visible { opacity: 1; transform: none; }
-      @media (prefers-reduced-motion: reduce) { .reveal-item { transition: none; opacity: 1; transform: none; } }
+      .gh-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: var(--space-4); margin-top: var(--space-4); }
+      .gh-card {
+        position: relative;
+        background: linear-gradient(180deg, rgba(255,255,255,0.06), rgba(255,255,255,0.02));
+        border: 1px solid rgba(255,255,255,0.06);
+        backdrop-filter: blur(8px) saturate(100%);
+        -webkit-backdrop-filter: blur(8px) saturate(100%);
+        padding: var(--space-4);
+        border-radius: 12px;
+        transition: transform 300ms cubic-bezier(.2,.9,.2,1), box-shadow 300ms;
+        box-shadow: 0 6px 18px rgba(10,10,10,0.15);
+        display: flex; flex-direction: column; gap: 10px; min-height: 120px;
+      }
+      .gh-card:hover { transform: translateY(-6px) scale(1.01); box-shadow: 0 14px 30px rgba(10,10,10,0.18); }
+      .gh-card .meta { display:flex; justify-content: space-between; gap: 8px; align-items: center; color: var(--color-muted); font-size: var(--font-size-2); }
+      .gh-card h3 { margin: 0; font-size: var(--font-size-4); }
+      .gh-card p { margin: 0; color: var(--color-muted); font-size: var(--font-size-2); line-height: 1.3; }
+      .gh-badges { display:flex; gap:8px; flex-wrap:wrap; }
+      .gh-badge { background: rgba(255,255,255,0.02); border: 1px solid rgba(255,255,255,0.03); padding: 6px 8px; border-radius: 999px; font-size: var(--font-size-1); color: var(--color-muted); }
+      @media (prefers-reduced-motion: reduce) { .gh-card { transition: none; transform: none; } }
     </style>
-    <ul class="stack" style="list-style:none;padding:0;" data-reveal-list>
-      {latestWork.map((it) => (
-        <li class="reveal-item">
-          <a href={`/work/${it.slug}`} class="a11y-link">
-            <h3 style="margin:0">{it.data.title}</h3>
-            <p style="color:var(--color-muted);margin:0">{it.data.summary}</p>
-            {it.data.outcomes && it.data.outcomes.length > 0 ? (
-              <div class="cluster" style="gap: var(--space-3);">
-                {it.data.outcomes.slice(0, 2).map((o) => (
-                  <span class="chip">{o.value}{o.unit ? ` ${o.unit}` : ''} {o.metric}</span>
-                ))}
+
+    <div class="gh-grid">
+      {latestRepos.length > 0 ? (
+        latestRepos.slice(0,3).map((r) => (
+          <a class="gh-card a11y-link" href={r.url} target="_blank" rel="noopener noreferrer">
+            <div style="display:flex;justify-content:space-between;align-items:flex-start;gap:12px;">
+              <h3>{r.name}</h3>
+              <div class="meta">
+                <span title="Stars">★ {r.stars}</span>
               </div>
-            ) : (it.data.wins && it.data.wins.length > 0 && (
-              <div class="cluster" style="gap: var(--space-3);">
-                {it.data.wins.slice(0, 2).map((w) => (
-                  <span class="chip">{w}</span>
-                ))}
+            </div>
+            <p>{r.description ?? 'No description provided.'}</p>
+            <div style="margin-top:auto;display:flex;justify-content:space-between;align-items:center;gap:8px;">
+              <div class="gh-badges">
+                {r.language && <span class="gh-badge">{r.language}</span>}
+                {r.homepage && <span class="gh-badge">site</span>}
               </div>
-            ))}
+              <div style="color:var(--color-muted);font-size:var(--font-size-1);">View on GitHub →</div>
+            </div>
           </a>
-        </li>
-      ))}
-    </ul>
+        ))
+      ) : (
+        <div style="color:var(--color-muted);">No public repositories found or GitHub API rate limited. Provide a GITHUB_TOKEN to increase quota.</div>
+      )}
+    </div>
   </section>
 
   
