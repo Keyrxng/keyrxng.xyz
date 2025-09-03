@@ -1,0 +1,38 @@
+---
+title: "Leaving Windows, finding Omarchy, and dressing my OS"
+publishedAt: "2025-09-03"
+summary: "A little IDE theme automation hack, growing as a dev, and finding joy in the details."
+tags: ["Omarchy", "Neovim", "Fun", "Personal"]
+readingTime: "3 min"
+---
+I used to be a full-tilt Windows weeb. Then one evening, between deleting node_modules and gasping at my remaining disk space, I thought: maybe the mess deserves a fresh start. I wiped a machine, leaned hard into WSL, and called it adulting.
+
+Fast-forward to last week: I fell into a DHH rabbit hole - his Lex Fridman conversation about the future of programming, human-centered languages, and that odd, deliberate delight he brings to tooling. Watching his Omarchy demo felt like seeing a room I’d always wanted: tidy, fast, and quietly opinionated. I formatted my old ThinkPad™ and put Omarchy on it. Three days later I’m already planning to nuke my next machine and do it all again.
+
+The charm isn’t only the UI. It’s the tiny ergonomics: during the demo DHH flicked a system theme and Neovim-of all things-kept pace. That was the flash of magic. I’m an IDE person. I get lost in Neovim more than I should. But that seamless sync? I wanted it without changing every muscle memory overnight.
+
+So Argyle (my trusty ghoul man servant) and I wrote a little glue. The idea was dumb-simple and joyful: read an Omarchy theme’s colors, make an editor-friendly JSON, and drop it into VS Code/Cursor so the editor dresses like the OS. It’s not perfect, but it’s the kind of thing that makes a laptop feel like an extension of taste.
+
+The technical elevator pitch, for those who care: parse `alacritty.toml`, normalize and validate colors, generate `<theme>-theme-sync.json`, and copy it into editor settings so a theme switch flips the editor too. Python did the heavy lifting because I’m rusty in Lua and my bash is more ceremonial than reliable.
+
+There’s a broader why here, though. DHH’s whole riff on optimizing for human readers-on poetic literacy in code-resonated with me being a statically-typed guy all my days. When it comes to AI, I like tools that make me think more, not less. Which brings me to one more thing: using AI to shortcut thinking is seductive, but it can be lousy practice. I’ve been chewing on a [recent MIT study](https://www.media.mit.edu/publications/your-brain-on-chatgpt/) about LLM-assisted writing and cognitive engagement: when you outsource too much, you risk dimming the circuits that made you curious in the first place.
+
+So this project sits in that space I like: small automations that sharpen the experience without doing the thinking for me. It’s glue, not a crutch. I learn while I tinker, and I keep the hard brain work for me.
+
+If you want to see it in action, here are a few tiny clips:
+
+- Running the install script with immediate integration into the default `omarchy-theme-set` cmd
+
+<video src="/readme-clips/theme-sync-install.mp4" controls muted preload="metadata" width="720"></video>
+
+- IDE themes stay in sync immediately after pulling a new theme from source
+
+<video src="/readme-clips/theme-sync-new-theme-install.mp4" controls muted preload="metadata" width="720"></video>
+
+- `omarchy-theme-sync apply ` - to change IDE themes without editing the system theme.
+
+<video src="/readme-clips/theme-sync-apply.mp4" controls muted preload="metadata" width="720"></video>
+
+If you’re the type who pokes under the hood: the repo is here - https://github.com/Keyrxng/Omarchy-IDE-Theme-Sync - and it’s gloriously scrappy. Star it if you like the chaos.
+
+What’s next? I’ve got a few experiments lined up after I migrate my main: a little local inference cluster, and poking at sandboxed agents that prototype safely on my laptop. But for now, I’m just enjoying the feeling of an editor that finally looks like my OS.

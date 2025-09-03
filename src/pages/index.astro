@@ -26,11 +26,16 @@ try {
   const url = `https://api.github.com/users/${githubUser}/repos?per_page=6&sort=updated`;
   const init: RequestInit = { headers: headers as HeadersInit };
   const res = await fetch(url, init);
+  const ignoreRepos =[
+    "keyrxng", 
+    "keyrxng.xyz" 
+  ]
   if (res.ok) {
     const data = await res.json();
     latestRepos = Array.isArray(data)
       ? data
           .filter((r) => !r.fork)
+          .filter((r) => !ignoreRepos.includes(r.name.toLowerCase()))
           .slice(0, 4)
           .map((r) => ({
             name: r.name,
